@@ -1,5 +1,8 @@
 import { LitElement, html, css, nothing } from "/js/lit/dist@3/lit-core.min.js";
 
+const EVENT_INPUT_DID_GET_DATA = "input/did-get-data";
+const EVENT_INPUT_DID_REQUEST_DATA_RESET = "input/did-request-data-reset";
+
 export class SimpleGreeting extends LitElement {
   static properties = {
     name: {},
@@ -116,8 +119,7 @@ export class InputPanel extends LitElement {
   }
   _submit(e) {
     e.preventDefault();
-    // this.disabled = true;
-    const event = new CustomEvent("input/did-get-data", {
+    const event = new CustomEvent(EVENT_INPUT_DID_GET_DATA, {
       bubbles: true,
       composed: true,
       detail: {
@@ -132,12 +134,11 @@ export class InputPanel extends LitElement {
     this._data = null;
     this.validateAddButtonStatus();
 
-    const event = new CustomEvent("input/did-request-data-reset", {
+    const event = new CustomEvent(EVENT_INPUT_DID_REQUEST_DATA_RESET, {
       bubbles: true,
       composed: true,
     });
     this.dispatchEvent(event);
-    // this.disabled = false;
   }
 }
 customElements.define("input-panel", InputPanel);
@@ -150,6 +151,11 @@ export class TriploApp extends LitElement {
   constructor() {
     super();
     this._inputDisabled = false;
+
+    // next bound funcs are required to get proper called by window.addEventListener
+    this._boundHandleInputDidGetData = this._handleInputDidGetData.bind(this);
+    this._boundHandleInputRequestDataReset =
+      this._handleInputRequestDataReset.bind(this);
   }
   connectedCallback() {
     super.connectedCallback();
@@ -160,12 +166,21 @@ export class TriploApp extends LitElement {
     linkElem.setAttribute("href", "css/cova.css");
     this.renderRoot.appendChild(linkElem);
 
-    window.addEventListener("input/did-get-data", () =>
-      this._handleInputDidGetData(),
+    window.addEventListener(
+      EVENT_INPUT_DID_GET_DATA,
+      this._boundHandleInputDidGetData, // use this instead of: this._handleInputDidGetData(),
     );
-    window.addEventListener("input/did-request-data-reset", () =>
-      this._handleInputRequestDataReset(),
+    window.addEventListener(
+      EVENT_INPUT_DID_REQUEST_DATA_RESET,
+      this._boundHandleInputRequestDataReset, // use this instead of: this._handleInputRequestDataReset(),
     );
+  }
+  disconnectedCallback() {
+    window.removeEventListener(
+      EVENT_INPUT_DID_GET_DATA,
+      this._boundHandleInputDidGetData || this._handleInputDidGetData,
+    );
+    super.disconnectedCallback();
   }
   render() {
     return html`<div id="app">
@@ -189,11 +204,11 @@ export class TriploApp extends LitElement {
 }
 customElements.define("triplo-app", TriploApp);
 
-window.addEventListener("input/did-request-data-reset", (e) => {
+window.addEventListener(EVENT_INPUT_DID_REQUEST_DATA_RESET, (e) => {
   console.log(e);
 });
 
-window.addEventListener("input/did-get-data", (e) => {
+window.addEventListener(EVENT_INPUT_DID_GET_DATA, (e) => {
   console.log(e);
   if (typeof e.detail?.data === "string") {
   } else {

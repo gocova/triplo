@@ -3,30 +3,6 @@ import { LitElement, html, css, nothing } from "/js/lit/dist@3/lit-core.min.js";
 const EVENT_INPUT_DID_GET_DATA = "input/did-get-data";
 const EVENT_INPUT_DID_REQUEST_DATA_RESET = "input/did-request-data-reset";
 
-export class SimpleGreeting extends LitElement {
-  static properties = {
-    name: {},
-  };
-  // Define scoped styles right with your component, in plain CSS
-  static styles = css`
-    :host {
-      color: blue;
-    }
-  `;
-
-  constructor() {
-    super();
-    // Declare reactive properties
-    this.name = "World";
-  }
-
-  // Render the UI as a function of component state
-  render() {
-    return html`<p>Hello, ${this.name}!</p>`;
-  }
-}
-customElements.define("simple-greeting", SimpleGreeting);
-
 export class InputPanel extends LitElement {
   static properties = {
     _name: { type: String },
@@ -179,6 +155,11 @@ export class TriploApp extends LitElement {
     window.removeEventListener(
       EVENT_INPUT_DID_GET_DATA,
       this._boundHandleInputDidGetData || this._handleInputDidGetData,
+    );
+    window.removeEventListener(
+      EVENT_INPUT_DID_REQUEST_DATA_RESET,
+      this._boundHandleInputRequestDataReset ||
+        this._handleInputRequestDataReset,
     );
     super.disconnectedCallback();
   }

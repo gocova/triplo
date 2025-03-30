@@ -1,4 +1,6 @@
 import { LitElement, html, css, nothing } from "/js/lit/dist@3/lit-core.min.js";
+import { scheduleTask } from "https://esm.sh/main-thread-scheduling";
+// import { scheduleTask } from "/js/main-thread-scheduling";
 
 const EVENT_INPUT_DID_GET_DATA = "input/did-get-data";
 const EVENT_INPUT_DID_REQUEST_DATA_RESET = "input/did-request-data-reset";
@@ -185,21 +187,180 @@ export class TriploApp extends LitElement {
 }
 customElements.define("triplo-app", TriploApp);
 
+let processedRows = [];
+let wordDict = {}; // word -> { id, alias_id }
+let attributeDict = {}; // "name|value" -> id
+let wordRows = [];
+
+// === Pipeline stages ===
+const pipeline = [
+  extractAttributeTokens,
+  tokenizeSpecialTags,
+  cleanAndSplit,
+  classifyTokens,
+  extractWordsOnly,
+  mapWordsToTokens,
+];
+
+// === Pipeline functions ===
+
+function extractAttributeTokens(ctx) {
+  const attrRegex = /\[att:(.*?)\](.*?)\[\/att\]/g;
+  ctx.text = ctx.text.toLowerCase();
+
+  ctx.text = ctx.text.replace(attrRegex, (_, name, value) => {
+    const key = `${name.trim()}|${value.trim()}`;
+    if (!attributeDict[key]) {
+      attributeDict[key] = Object.keys(attributeDict).length;
+    }
+    const id = attributeDict[key];
+    ctx.attributes.push({
+      type: "attribute_token",
+      name: name.trim(),
+      value: value.trim(),
+      id,
+    });
+    return ` <att_${id}> `;
+  });
+}
+
+function tokenizeSpecialTags(ctx) {
+  ctx.tokens = ctx.text
+    .split(/(#[\w]+|@[\w]+|<att_\d+>)/g)
+    .filter(Boolean)
+    .map((t) => t.trim());
+}
+
+function cleanAndSplit(ctx) {
+  ctx.tokens = ctx.tokens
+    .map((s) =>
+      s
+        .replace(/[^\w#@<>]+/g, " ")
+        .replace(/\s+/g, " ")
+        .trim(),
+    )
+    .filter(Boolean);
+}
+
+function classifyTokens(ctx) {
+  const finalTokens = [];
+  for (const part of ctx.tokens) {
+    if (/^<att_\d+>$/.test(part)) {
+      const idx = parseInt(part.match(/\d+/)[0]);
+      finalTokens.push(ctx.attributes[idx]);
+    } else {
+      const subparts = part.split(" ").filter(Boolean);
+      for (const sub of subparts) {
+        if (/^\d+(\.\d+)?$/.test(sub)) {
+          finalTokens.push({ type: "number_token", value: sub });
+        } else {
+          finalTokens.push(sub);
+        }
+      }
+    }
+  }
+  ctx.tokens = finalTokens;
+}
+
+function extractWordsOnly(ctx) {
+  ctx.words = ctx.tokens
+    .filter((t) => typeof t === "string")
+    .map((w) => w.toLowerCase());
+}
+
+function mapWordsToTokens(ctx) {
+  ctx.final_tokens = ctx.tokens.map((token) => {
+    if (typeof token === "string") {
+      const lower = token.toLowerCase();
+      const dict = wordDict[lower];
+      return {
+        type: "word_token",
+        value: dict?.alias_id || dict?.id || null,
+        word: lower,
+      };
+    }
+    return token; // preserve attribute_token or number_token
+  });
+}
+
+// === Event handlers ===
+
 window.addEventListener(EVENT_INPUT_DID_REQUEST_DATA_RESET, (e) => {
   console.log(e);
+  processedRows = [];
 });
 
-window.addEventListener(EVENT_INPUT_DID_GET_DATA, (e) => {
-  console.log(e);
-  if (typeof e.detail?.data === "string") {
-  } else {
+window.addEventListener(EVENT_INPUT_DID_GET_DATA, async (e) => {
+  // console.log(e);
+  const rawText = e.detail?.data;
+  if (typeof rawText !== "string") {
     const event = new CustomEvent("input/did-error-on-data", {
       bubbles: true,
       composed: true,
       detail: {
-        message: `The provided data is not string, (got type: ${typeof e.detail?.data})`,
+        message: `The provided data is not string, (got type: ${typeof rawText})`,
       },
     });
     window.dispatchEvent(event);
   }
+  const lines = rawText.split("\n").slice(1);
+  const linesCount = lines.length;
+  let i = 0;
+  if (i < linesCount) {
+    do {
+      await scheduleTask(
+        () => {
+          let j = i;
+          if (j < Math.min(i + 5, linesCount)) {
+            do {
+              const row = (lines[j] || "").split("\t");
+              const text = row[0] || "";
+              let context = {
+                text,
+                row,
+                source_text: text,
+                tokens: [],
+                words: [],
+                attributes: [],
+                final_tokens: [],
+              };
+              for (const stage of pipeline) stage(context);
+              processedRows.push(context);
+              j++;
+            } while (j < Math.min(i + 5, linesCount));
+          }
+        },
+        {
+          priority: "smooth",
+        },
+      );
+      i += 5;
+    } while (i < linesCount);
+  }
+  // console.log(processedRows);
+  // Word count from context.words
+  const wordCount = {};
+  processedRows.forEach(({ words }) => {
+    words.forEach((w) => (wordCount[w] = (wordCount[w] || 0) + 1));
+  });
+
+  wordRows = Object.entries(wordCount).map(([word, count], index) => ({
+    id: index + 1,
+    word,
+    count,
+    enabled: true,
+    alias: "",
+    alias_id: null,
+    selected: false,
+  }));
+
+  // Build dictionary for mapping
+  wordDict = {};
+  wordRows.forEach((row) => {
+    wordDict[row.word] = {
+      id: row.id,
+      alias_id: row.alias_id,
+    };
+  });
+  console.log(wordDict);
 });

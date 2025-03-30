@@ -190,6 +190,7 @@ customElements.define("triplo-app", TriploApp);
 let processedRows = [];
 let wordDict = {}; // word -> { id, alias_id }
 let attributeDict = {}; // "name|value" -> id
+let attributeTypeCounters = {}; // name -> current index
 let wordRows = [];
 
 // === Pipeline stages ===
@@ -209,24 +210,32 @@ function extractAttributeTokens(ctx) {
   ctx.text = ctx.text.toLowerCase();
 
   ctx.text = ctx.text.replace(attrRegex, (_, name, value) => {
-    const key = `${name.trim()}|${value.trim()}`;
+    const cleanName = name.trim();
+    const cleanValue = value.trim();
+    const key = `${cleanName}|${cleanValue}`;
+
     if (!attributeDict[key]) {
-      attributeDict[key] = Object.keys(attributeDict).length;
+      if (!attributeTypeCounters[cleanName]) {
+        attributeTypeCounters[cleanName] = 0;
+      }
+      attributeDict[key] = attributeTypeCounters[cleanName];
+      attributeTypeCounters[cleanName]++;
     }
+
     const id = attributeDict[key];
     ctx.attributes.push({
       type: "attribute_token",
-      name: name.trim(),
-      value: value.trim(),
+      name: cleanName,
+      value: cleanValue,
       id,
     });
-    return ` <att_${id}> `;
+    return ` <att_${cleanName}_${id}> `;
   });
 }
 
 function tokenizeSpecialTags(ctx) {
   ctx.tokens = ctx.text
-    .split(/(#[\w]+|@[\w]+|<att_\d+>)/g)
+    .split(/(#[\w]+|@[\w]+|<att_[\w]+_\d+>)/g)
     .filter(Boolean)
     .map((t) => t.trim());
 }
@@ -235,7 +244,7 @@ function cleanAndSplit(ctx) {
   ctx.tokens = ctx.tokens
     .map((s) =>
       s
-        .replace(/[^\w#@<>]+/g, " ")
+        .replace(/[^\w#@<>_]+/g, " ")
         .replace(/\s+/g, " ")
         .trim(),
     )
@@ -245,9 +254,21 @@ function cleanAndSplit(ctx) {
 function classifyTokens(ctx) {
   const finalTokens = [];
   for (const part of ctx.tokens) {
-    if (/^<att_\d+>$/.test(part)) {
-      const idx = parseInt(part.match(/\d+/)[0]);
-      finalTokens.push(ctx.attributes[idx]);
+    if (/^<att_[\w]+_\d+>$/.test(part)) {
+      const [_, type, id] = part.match(/^<att_(\w+)_([0-9]+)>$/);
+      const match = ctx.attributes.find(
+        (a) => a.name === type && a.id === parseInt(id),
+      );
+      if (match) {
+        finalTokens.push(match);
+      } else {
+        finalTokens.push({
+          type: "attribute_token",
+          name: type,
+          value: null,
+          id: parseInt(id),
+        });
+      }
     } else {
       const subparts = part.split(" ").filter(Boolean);
       for (const sub of subparts) {

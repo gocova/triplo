@@ -129,6 +129,7 @@ export class WordTable extends LitElement {
   constructor() {
     super();
     this.wordRows = [];
+    this._matched = new Set();
   }
   connectedCallback() {
     super.connectedCallback();
@@ -175,21 +176,35 @@ export class WordTable extends LitElement {
           </td>
         </tr>`,
     );
+    const matchedDescriptions = Array.from(
+      Array.from(this._matched).reduce((s, word) => {
+        const rows = wordToRows[word];
+        if (rows) rows.forEach((relatedRow) => s.add(relatedRow));
+        return s;
+      }, new Set()),
+    ).map((ctx) => ctx.text);
+    const sidePanel = html`<div class="">
+      <h4>Descripciones relacionadas (${matchedDescriptions.length})</h4>
+      <ul>
+        ${matchedDescriptions.map((d) => html`<li>${d}</li>`)}
+      </ul>
+    </div>`;
     return html`<table class="word-table">
-      <thead>
-        <tr>
-          <th><input type="checkbox" @click="${this._toggleAllSelect}" /></th>
-          <th onclick="setSort('id')">ID</th>
-          <th onclick="setSort('word')">Word</th>
-          <th onclick="setSort('count')">Count</th>
-          <th>Enabled</th>
-          <th onclick="setSort('alias_id')">Alias</th>
-        </tr>
-      </thead>
-      <tbody>
-        ${renderedRows}
-      </tbody>
-    </table>`;
+        <thead>
+          <tr>
+            <th><input type="checkbox" @click="${this._toggleAllSelect}" /></th>
+            <th onclick="setSort('id')">ID</th>
+            <th onclick="setSort('word')">Word</th>
+            <th onclick="setSort('count')">Count</th>
+            <th>Enabled</th>
+            <th onclick="setSort('alias_id')">Alias</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${renderedRows}
+        </tbody>
+      </table>
+      ${sidePanel}`;
   }
   _toggleAllSelect() {
     this.wordRows = this.wordRows.map((row) => {
@@ -205,6 +220,11 @@ export class WordTable extends LitElement {
       if (row) {
         console.log(row);
         row.selected = !row.selected;
+        if (row.selected) {
+          this._matched.add(row.word);
+        } else {
+          this._matched.delete(row.word);
+        }
         this.requestUpdate();
       }
     }

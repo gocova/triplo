@@ -4,6 +4,7 @@ import { scheduleTask } from "https://esm.sh/main-thread-scheduling";
 
 const EVENT_INPUT_DID_GET_DATA = "input/did-get-data";
 const EVENT_INPUT_DID_REQUEST_DATA_RESET = "input/did-request-data-reset";
+const EVENT_PROCESSOR_DID_FINISH_PROCESSING = "processor/did-finish-processing";
 
 export class InputPanel extends LitElement {
   static properties = {
@@ -121,19 +122,98 @@ export class InputPanel extends LitElement {
 }
 customElements.define("input-panel", InputPanel);
 
+export class WordTable extends LitElement {
+  static properties = {
+    wordRows: { type: Array },
+  };
+  constructor() {
+    super();
+    this.wordRows = [];
+  }
+  connectedCallback() {
+    super.connectedCallback();
+
+    // Apply external styles to the shadow dom
+    const linkElem = document.createElement("link");
+    linkElem.setAttribute("rel", "stylesheet");
+    linkElem.setAttribute("href", "css/cova.css");
+    this.renderRoot.appendChild(linkElem);
+  }
+  render() {
+    return html`<table class="word-table">
+      <thead>
+        <tr>
+          <th><input type="checkbox" @click="${this._toggleAllSelect}" /></th>
+          <th onclick="setSort('id')">ID</th>
+          <th onclick="setSort('word')">Word</th>
+          <th onclick="setSort('count')">Count</th>
+          <th>Enabled</th>
+          <th onclick="setSort('alias_id')">Alias</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${this.wordRows.map((row) => {
+          html`<tr>
+            <td>
+              <input
+                type="checkbox"
+                class="rowSelect"
+                data-id="${row.id}"
+                ${row.selected ? "checked" : ""}
+              />
+            </td>
+            <td>${row.id}</td>
+            <td>${row.word}</td>
+            <td>${row.count}</td>
+            <td>
+              <input
+                type="checkbox"
+                class="enabledCheckbox"
+                data-id="${row.id}"
+                ${row.enabled ? "checked" : ""}
+              />
+            </td>
+            <td>
+              <input
+                type="text"
+                class="aliasInput"
+                data-id="${row.id}"
+                value="${row.alias}"
+                placeholder="group name"
+              />
+            </td>
+          </tr>`;
+        })}
+      </tbody>
+    </table>`;
+  }
+  _toggleAllSelect() {
+    this.wordRows = this.wordRows.map((row) => {
+      row.selected = !row.selected;
+      return row;
+    });
+  }
+}
+
+customElements.define("word-table", WordTable);
+
 export class TriploApp extends LitElement {
   static properties = {
     _inputDisabled: { type: Boolean },
+    wordRows: { type: Array },
   };
 
   constructor() {
     super();
     this._inputDisabled = false;
+    this.wordRows = [];
 
     // next bound funcs are required to get proper called by window.addEventListener
     this._boundHandleInputDidGetData = this._handleInputDidGetData.bind(this);
     this._boundHandleInputRequestDataReset =
       this._handleInputRequestDataReset.bind(this);
+    this._boundHandleProcessorDidFinishProcessing =
+      this._handleProcessorDidFinishProcessing.bind(this);
   }
   connectedCallback() {
     super.connectedCallback();
@@ -152,6 +232,10 @@ export class TriploApp extends LitElement {
       EVENT_INPUT_DID_REQUEST_DATA_RESET,
       this._boundHandleInputRequestDataReset, // use this instead of: this._handleInputRequestDataReset(),
     );
+    window.addEventListener(
+      EVENT_PROCESSOR_DID_FINISH_PROCESSING,
+      this._handleProcessorDidFinishProcessing, // use this instead of this._handleProcessorDidFinishProcessing()
+    );
   }
   disconnectedCallback() {
     window.removeEventListener(
@@ -163,18 +247,29 @@ export class TriploApp extends LitElement {
       this._boundHandleInputRequestDataReset ||
         this._handleInputRequestDataReset,
     );
+    window.removeEventListener(
+      EVENT_PROCESSOR_DID_FINISH_PROCESSING,
+      this._boundHandleProcessorDidFinishProcessing ||
+        this._handleProcessorDidFinishProcessing,
+    );
     super.disconnectedCallback();
   }
   render() {
     return html`<div id="app">
-      <div class="initial-setup">
-        <input-panel .disabled="${this._inputDisabled}"></input-panel>
-        <div class="input-processing-progress" style="display: none"></div>
-        <div class="dictionary panel" style="display: none"></div>
-      </div>
-      <div class="main">
-        <div class="main-title-bar"></div>
-        <div class="main-contents"></div>
+      <div class="project-parts"></div>
+      <div class="part-details">
+        <div class="part-title-bar"></div>
+        <div class="initial-setup">
+          <input-panel .disabled="${this._inputDisabled}"></input-panel>
+          <div class="input-processing-progress" style="display: none"></div>
+          <div class="dictionary panel" style="display: none"></div>
+        </div>
+        <div class="main">
+          <div class="dictionary-setup">
+            <word-table .wordRows="${this.wordRows}"></word-table>
+          </div>
+          <div class="main-contents"></div>
+        </div>
       </div>
     </div>`;
   }
@@ -183,6 +278,16 @@ export class TriploApp extends LitElement {
   }
   _handleInputRequestDataReset() {
     if (this._inputDisabled) this._inputDisabled = false;
+  }
+  _handleProcessorDidFinishProcessing(e) {
+    // console.log(e);
+    console.info(
+      "TriploApp._handleProcessorDidFinishProcessing: Did get event",
+    );
+    const { detail } = e;
+    if (detail) {
+      this.wordRows = detail.wordRows || [];
+    }
   }
 }
 customElements.define("triplo-app", TriploApp);
@@ -366,7 +471,7 @@ window.addEventListener(EVENT_INPUT_DID_GET_DATA, async (e) => {
   });
 
   wordRows = Object.entries(wordCount).map(([word, count], index) => ({
-    id: index + 1,
+    id: index,
     word,
     count,
     enabled: true,
@@ -384,4 +489,16 @@ window.addEventListener(EVENT_INPUT_DID_GET_DATA, async (e) => {
     };
   });
   console.log(wordDict);
+  console.log(wordRows);
+  const didFinishProcessingEvent = new CustomEvent(
+    EVENT_PROCESSOR_DID_FINISH_PROCESSING,
+    {
+      bubbles: true,
+      composed: true,
+      detail: {
+        wordRows,
+      },
+    },
+  );
+  window.dispatchEvent(didFinishProcessingEvent);
 });

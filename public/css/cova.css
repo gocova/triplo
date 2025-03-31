@@ -3,18 +3,6 @@ body {
     margin: 0;
     padding: 0;
 }
-#app {
-    width: 100vw;
-    height: 100vh;
-    display: flex;
-    flex-flow: row nowrap;
-
-    .initial-setup {
-        display: flex;
-        flex-flow: column nowrap;
-        border: 0.5rem solid transparent;
-    }
-}
 :root {
     --cova-panel-heading-size: 20px;
     --cova-panel-heading-weight: 700;
@@ -26,10 +14,34 @@ body {
     --cova-shadow: rgba(9, 10, 12, 0.1) 0px 8px 16px -2px,
         rgba(9, 10, 12, 0.02) 0px 0px 0px 1px;
     --cova-panel-shadow: var(--cova-shadow);
+    --cova-panel-width: 320px;
+    --cova-project-parts-width: 320px;
+}
+
+#app {
+    width: 100vw;
+    height: 100vh;
+    display: flex;
+    flex-flow: row nowrap;
+
+    .project-parts {
+        min-width: var(--cova-project-parts-width);
+    }
+
+    .part-details {
+        display: flex;
+        flex-flow: column nowrap;
+        .initial-setup {
+            display: flex;
+            flex-flow: column nowrap;
+            border: 0.5rem solid transparent;
+        }
+    }
 }
 
 .panel {
     box-shadow: var(--cova-panel-shadow);
+    max-width: var(--cova-panel-width);
     .panel-heading {
         background-color: rgb(64, 70, 84);
         box-sizing: border-box;

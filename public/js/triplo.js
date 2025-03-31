@@ -206,12 +206,18 @@ export class WordTable extends LitElement {
       </table>
       ${sidePanel}`;
   }
-  _toggleAllSelect() {
+  _toggleAllSelect(e) {
+    const checked = e.target?.checked === true;
     this.wordRows = this.wordRows.map((row) => {
-      row.selected = !row.selected;
+      row.selected = checked;
       return row;
     });
-    // this.requestUpdate();
+    if (checked) {
+      wordRows.forEach((wordRow) => this._matched.add(wordRow.word));
+    } else {
+      this._matched.clear();
+    }
+    this.requestUpdate();
   }
   _handleRowSelect(e) {
     if (e.target?.dataset?.id) {

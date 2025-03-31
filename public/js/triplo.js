@@ -140,6 +140,41 @@ export class WordTable extends LitElement {
     this.renderRoot.appendChild(linkElem);
   }
   render() {
+    // console.log(this.wordRows);
+    const renderedRows = this.wordRows.map(
+      (row) =>
+        html`<tr>
+          <td>
+            <input
+              type="checkbox"
+              class="rowSelect"
+              data-id="${row.id}"
+              .checked="${row.selected}"
+              @change="${this._handleRowSelect}"
+            />
+          </td>
+          <td>${row.id}</td>
+          <td>${row.word}</td>
+          <td>${row.count}</td>
+          <td>
+            <input
+              type="checkbox"
+              class="enabledCheckbox"
+              data-id="${row.id}"
+              .checked="${row.enabled}"
+            />
+          </td>
+          <td>
+            <input
+              type="text"
+              class="aliasInput"
+              data-id="${row.id}"
+              value="${row.alias}"
+              placeholder="group name"
+            />
+          </td>
+        </tr>`,
+    );
     return html`<table class="word-table">
       <thead>
         <tr>
@@ -152,38 +187,7 @@ export class WordTable extends LitElement {
         </tr>
       </thead>
       <tbody>
-        ${this.wordRows.map((row) => {
-          html`<tr>
-            <td>
-              <input
-                type="checkbox"
-                class="rowSelect"
-                data-id="${row.id}"
-                ${row.selected ? "checked" : ""}
-              />
-            </td>
-            <td>${row.id}</td>
-            <td>${row.word}</td>
-            <td>${row.count}</td>
-            <td>
-              <input
-                type="checkbox"
-                class="enabledCheckbox"
-                data-id="${row.id}"
-                ${row.enabled ? "checked" : ""}
-              />
-            </td>
-            <td>
-              <input
-                type="text"
-                class="aliasInput"
-                data-id="${row.id}"
-                value="${row.alias}"
-                placeholder="group name"
-              />
-            </td>
-          </tr>`;
-        })}
+        ${renderedRows}
       </tbody>
     </table>`;
   }
@@ -192,6 +196,18 @@ export class WordTable extends LitElement {
       row.selected = !row.selected;
       return row;
     });
+    // this.requestUpdate();
+  }
+  _handleRowSelect(e) {
+    if (e.target?.dataset?.id) {
+      const rowId = parseInt(e.target.dataset.id);
+      const row = this.wordRows.find((r) => r.id === rowId);
+      if (row) {
+        console.log(row);
+        row.selected = !row.selected;
+        this.requestUpdate();
+      }
+    }
   }
 }
 
@@ -234,7 +250,7 @@ export class TriploApp extends LitElement {
     );
     window.addEventListener(
       EVENT_PROCESSOR_DID_FINISH_PROCESSING,
-      this._handleProcessorDidFinishProcessing, // use this instead of this._handleProcessorDidFinishProcessing()
+      this._boundHandleProcessorDidFinishProcessing, // use this instead of this._handleProcessorDidFinishProcessing()
     );
   }
   disconnectedCallback() {
@@ -280,23 +296,21 @@ export class TriploApp extends LitElement {
     if (this._inputDisabled) this._inputDisabled = false;
   }
   _handleProcessorDidFinishProcessing(e) {
-    // console.log(e);
     console.info(
       "TriploApp._handleProcessorDidFinishProcessing: Did get event",
     );
-    const { detail } = e;
-    if (detail) {
-      this.wordRows = detail.wordRows || [];
-    }
+    this.wordRows = wordRows;
   }
 }
 customElements.define("triplo-app", TriploApp);
 
-let processedRows = [];
+let wordRows = [];
 let wordDict = {}; // word -> { id, alias_id }
 let attributeDict = {}; // "name|value" -> id
 let attributeTypeCounters = {}; // name -> current index
-let wordRows = [];
+// sort vars
+let processedRows = [];
+let wordToRows = {}; // optimized word-to-row lookup
 
 // === Pipeline stages ===
 const pipeline = [
@@ -392,6 +406,10 @@ function extractWordsOnly(ctx) {
   ctx.words = ctx.tokens
     .filter((t) => typeof t === "string")
     .map((w) => w.toLowerCase());
+  ctx.words.forEach((word) => {
+    if (!wordToRows[word]) wordToRows[word] = new Set();
+    wordToRows[word].add(ctx);
+  });
 }
 
 function mapWordsToTokens(ctx) {

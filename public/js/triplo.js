@@ -5,6 +5,7 @@ import { scheduleTask } from "https://esm.sh/main-thread-scheduling";
 const EVENT_INPUT_DID_GET_DATA = "input/did-get-data";
 const EVENT_INPUT_DID_REQUEST_DATA_RESET = "input/did-request-data-reset";
 const EVENT_PROCESSOR_DID_FINISH_PROCESSING = "processor/did-finish-processing";
+const EVENT_APP_DID_REQUEST_ENRICHMENT = "app/did-request-enrichment";
 
 export class InputPanel extends LitElement {
   static properties = {
@@ -102,10 +103,12 @@ customElements.define("input-panel", InputPanel);
 export class WordTable extends LitElement {
   static properties = {
     wordRows: { type: Array },
+    selectedGroup: { type: String },
   };
   constructor() {
     super();
     this.wordRows = [];
+    this.selectedGroup = "[unselected]";
     this._matched = new Set();
     this._sortAsc = true;
     this._sortColumn = "id";
@@ -124,14 +127,15 @@ export class WordTable extends LitElement {
     const sortColumn = this._sortColumn;
     const sortAsc = this._sortAsc;
     this.wordRows.sort((a, b) => {
-      let valA = a[sortColumn];
-      let valB = b[sortColumn];
-      if (sortColumn === "word")
+      let valA = a[sortColumn] || "";
+      let valB = b[sortColumn] || "";
+      if (sortColumn === "word" || sortColumn === "aliasId")
         return sortAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
-      if (sortColumn === "alias_id") {
-        valA = valA || 0;
-        valB = valB || 0;
-      }
+
+      // if (sortColumn === "alias_id") {
+      //   valA = valA || 0;
+      //   valB = valB || 0;
+      // }
       return sortAsc ? valA - valB : valB - valA;
     });
 
@@ -156,17 +160,19 @@ export class WordTable extends LitElement {
               class="enabledCheckbox"
               data-id="${row.id}"
               .checked="${row.enabled}"
+              .disabled="${row.aliasId !== null}"
               @change="${this._handleEnableWord}"
             />
           </td>
           <td>
-            <input
+            ${row.aliasId}
+            <!-- <input
               type="text"
               class="aliasInput"
               data-id="${row.id}"
-              value="${row.alias}"
+              value="${row.aliasId}"
               placeholder="group name"
-            />
+            /> -->
           </td>
         </tr>`,
     );
@@ -194,7 +200,11 @@ export class WordTable extends LitElement {
               <th @click="${() => this._handleSetSort("word")}"">Word</th>
               <th @click="${() => this._handleSetSort("count")}"">Count</th>
               <th>Enabled</th>
-              <th @click="${() => this._handleSetSort("alias_id")}">Alias</th>
+              <th >
+                  <span @click="${() => this._handleSetSort("aliasId")}">Alias</span>
+                  <button @click="${this._handleAddAlias}">Add</button>
+                  <button @click="${this._handleRemoveAlias}">Remove</button>
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -253,6 +263,40 @@ export class WordTable extends LitElement {
         this.requestUpdate();
       }
     }
+  }
+  _handleAddAlias() {
+    const selected = this.wordRows.filter((r) => r.selected /* && !r.aliasId*/);
+
+    if (selected.length === 0) return;
+    const newAliasId = `${this._selectedGroup}_${aliasCounter++}`;
+    aliasCounts[newAliasId] = 0;
+
+    selected.forEach((row) => {
+      if (!row.aliasId) {
+        row.aliasId = newAliasId;
+        aliasCounts[newAliasId] += row.enabled ? row.count : 0;
+      }
+      row.selected = false;
+    });
+    this._matched.clear();
+    this.requestUpdate();
+  }
+  _handleRemoveAlias() {
+    const selected = this.wordRows.filter((r) => r.selected /* && r.aliasId */);
+    selected.forEach((row) => {
+      if (row.aliasId) {
+        if (aliasCounts[row.aliasId]) {
+          if (row.enabled) {
+            aliasCounts[row.aliasId] -= row.count;
+            if (aliasCounts[row.aliasId] <= 0) delete aliasCounts[row.aliasId];
+          }
+        }
+        row.aliasId = null;
+      }
+      row.selected = false;
+    });
+    this._matched.clear();
+    this.requestUpdate();
   }
 }
 
@@ -335,9 +379,16 @@ export class TriploApp extends LitElement {
                 ${groupsElement}
               </ul>
             </div>
-            <word-table .wordRows="${this.wordRows}"></word-table>
+            <word-table
+              .wordRows="${this.wordRows}"
+              .selectedGroup="${this._selectedGroup}"
+            ></word-table>
           </div>
-          <div class="main-contents"></div>
+          <div class="main-contents">
+            <button @click="${this._handleRequestEnrichment}">
+              Enrich rows
+            </button>
+          </div>
         </div>
       </div>
     </div>`;
@@ -356,16 +407,24 @@ export class TriploApp extends LitElement {
     this._groups = groups;
     this._selectedGroup = groups[0] || null;
   }
+  _handleRequestEnrichment() {
+    console.info(
+      `TriploApp._handleRequestEnrichment: Will request '${EVENT_APP_DID_REQUEST_ENRICHMENT}'`,
+    );
+    window.dispatchEvent(new CustomEvent(EVENT_APP_DID_REQUEST_ENRICHMENT));
+  }
 }
 customElements.define("triplo-app", TriploApp);
 
 let wordRows = [];
-let wordDict = {}; // word -> { id, alias_id }
+let wordDict = {}; // word -> { id, aliasId }
 let attributeDict = {}; // "name|value" -> id
 let attributeTypeCounters = {}; // name -> current index
 let processedRows = [];
 let wordToRows = {}; // optimized word-to-row lookup
 let groups = [];
+let aliasCounter = 0;
+let aliasCounts = {};
 
 // === Pipeline stages ===
 const pipeline = [
@@ -474,12 +533,47 @@ function mapWordsToTokens(ctx) {
       const dict = wordDict[lower];
       return {
         type: "word_token",
-        value: dict?.alias_id || dict?.id || null,
+        value: dict?.aliasId || dict?.id || null,
         word: lower,
       };
     }
     return token; // preserve attribute_token or number_token
   });
+}
+
+function enrichProcessedTokens() {
+  processedRows.forEach((ctx) => {
+    const enriched = [];
+    const seenAliases = new Map();
+
+    ctx.final_tokens.forEach((token) => {
+      if (token.type === "word_token") {
+        const row = wordRows.find((r) => r.word === token.word);
+        if (!row || !row.enabled) return;
+
+        if (row.aliasId) {
+          if (!seenAliases.has(row.aliasId)) {
+            seenAliases.set(row.aliasId, {
+              type: "alias_token",
+              aliasId: row.aliasId,
+              count: aliasCounts[row.aliasId] || 0,
+              words: [token.word],
+            });
+          } else {
+            seenAliases.get(row.aliasId).words.push(token.word);
+          }
+        } else {
+          enriched.push({ ...token, count: row.count });
+        }
+      } else {
+        enriched.push(token);
+      }
+    });
+
+    enriched.push(...seenAliases.values());
+    ctx.enriched_tokens = enriched;
+  });
+  console.log("Processed rows enriched.");
 }
 
 // === Event handlers ===
@@ -567,8 +661,8 @@ window.addEventListener(EVENT_INPUT_DID_GET_DATA, async (e) => {
     word,
     count,
     enabled: true,
-    alias: "",
-    alias_id: null,
+    // alias: "",
+    aliasId: null,
     selected: false,
   }));
 
@@ -577,7 +671,7 @@ window.addEventListener(EVENT_INPUT_DID_GET_DATA, async (e) => {
   wordRows.forEach((row) => {
     wordDict[row.word] = {
       id: row.id,
-      alias_id: row.alias_id,
+      aliasId: row.aliasId,
     };
   });
   console.log(processedRows);
@@ -594,4 +688,9 @@ window.addEventListener(EVENT_INPUT_DID_GET_DATA, async (e) => {
     },
   );
   window.dispatchEvent(didFinishProcessingEvent);
+});
+
+window.addEventListener(EVENT_APP_DID_REQUEST_ENRICHMENT, () => {
+  console.info(`-> Processing event: ${EVENT_APP_DID_REQUEST_ENRICHMENT}`);
+  enrichProcessedTokens();
 });

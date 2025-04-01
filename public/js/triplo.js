@@ -8,8 +8,6 @@ const EVENT_PROCESSOR_DID_FINISH_PROCESSING = "processor/did-finish-processing";
 
 export class InputPanel extends LitElement {
   static properties = {
-    _name: { type: String },
-    inputsetNameError: { type: String },
     _data: { type: String },
     inputsetDataError: { type: String },
     disabled: { type: Boolean },
@@ -19,9 +17,7 @@ export class InputPanel extends LitElement {
   constructor() {
     super();
     this._data = null;
-    this._name = null;
     this.inputsetDataError = null;
-    this.inputsetNameError = null;
     this._isAddReady = false;
   }
 
@@ -36,17 +32,13 @@ export class InputPanel extends LitElement {
   }
   render() {
     const inputContents = !this.disabled
-      ? html`<input id="inputset-name"
-        type="text"
-        placeholder="Set name"
-        @blur="${this._readName}"
-        .value="${this._name}"
-        required></input>
-    <textarea id="inputset-data"
-        placeholder="Paste data"
-        .value="${this._data}"
-        @blur="${this._readData}"
-        required ></textarea>`
+      ? html`<textarea
+          id="inputset-data"
+          placeholder="Paste data"
+          .value="${this._data}"
+          @blur="${this._readData}"
+          required
+        ></textarea>`
       : nothing;
 
     return html`<div class="input-panel panel">
@@ -72,23 +64,8 @@ export class InputPanel extends LitElement {
   }
 
   validateAddButtonStatus() {
-    this._isAddReady =
-      this._name &&
-      this._name.length > 0 &&
-      this._data &&
-      this._data.length > 0;
+    this._isAddReady = this._data && this._data.length > 0;
   }
-  _readName(e) {
-    let possibleValue = e.target?.value;
-    if (possibleValue) {
-      possibleValue = possibleValue.trim();
-      if (possibleValue.length > 0) {
-        this._name = possibleValue;
-        this.validateAddButtonStatus();
-      }
-    }
-  }
-
   _readData(e) {
     let possibleValue = e.target?.value;
     if (possibleValue && possibleValue.length > 0) {
@@ -291,6 +268,8 @@ export class TriploApp extends LitElement {
     super();
     this._inputDisabled = false;
     this.wordRows = [];
+    this._groups = [];
+    this._selectedGroup = null;
 
     // next bound funcs are required to get proper called by window.addEventListener
     this._boundHandleInputDidGetData = this._handleInputDidGetData.bind(this);
@@ -339,6 +318,7 @@ export class TriploApp extends LitElement {
     super.disconnectedCallback();
   }
   render() {
+    const groupsElement = html`${this._groups.map((g) => html`<li>${g}</li>`)}`;
     return html`<div id="app">
       <div class="project-parts"></div>
       <div class="part-details">
@@ -350,6 +330,11 @@ export class TriploApp extends LitElement {
         </div>
         <div class="main">
           <div class="dictionary-setup">
+            <div class="group-selector">
+              <ul>
+                ${groupsElement}
+              </ul>
+            </div>
             <word-table .wordRows="${this.wordRows}"></word-table>
           </div>
           <div class="main-contents"></div>
@@ -368,6 +353,8 @@ export class TriploApp extends LitElement {
       "TriploApp._handleProcessorDidFinishProcessing: Did get event",
     );
     this.wordRows = wordRows;
+    this._groups = groups;
+    this._selectedGroup = groups[0] || null;
   }
 }
 customElements.define("triplo-app", TriploApp);
@@ -376,9 +363,9 @@ let wordRows = [];
 let wordDict = {}; // word -> { id, alias_id }
 let attributeDict = {}; // "name|value" -> id
 let attributeTypeCounters = {}; // name -> current index
-// sort vars
 let processedRows = [];
 let wordToRows = {}; // optimized word-to-row lookup
+let groups = [];
 
 // === Pipeline stages ===
 const pipeline = [
@@ -503,6 +490,7 @@ window.addEventListener(EVENT_INPUT_DID_REQUEST_DATA_RESET, (e) => {
 });
 
 window.addEventListener(EVENT_INPUT_DID_GET_DATA, async (e) => {
+  console.info(`-> Processing event: ${EVENT_INPUT_DID_GET_DATA}`);
   // console.log(e);
   const rawText = e.detail?.data;
   if (typeof rawText !== "string") {
@@ -515,9 +503,19 @@ window.addEventListener(EVENT_INPUT_DID_GET_DATA, async (e) => {
     });
     window.dispatchEvent(event);
   }
-  const lines = rawText.split("\n").slice(1);
+
+  const lines = rawText.split("\n").filter(Boolean);
   const linesCount = lines.length;
-  let i = 0;
+  if (linesCount < 2) {
+    alert(
+      `At least 2 rows (1 line of headers + 1 line of data) were expected but got ${linesCount} rows!`,
+    );
+  }
+  const headers = lines[0].toLowerCase().split("\t");
+  const textIndex = 0; // always the first column
+  const idIndex = headers.indexOf("id");
+  const groupIndex = headers.indexOf("group");
+  let i = 1;
   if (i < linesCount) {
     do {
       await scheduleTask(
@@ -526,9 +524,16 @@ window.addEventListener(EVENT_INPUT_DID_GET_DATA, async (e) => {
           if (j < Math.min(i + 5, linesCount)) {
             do {
               const row = (lines[j] || "").split("\t");
-              const text = row[0] || "";
+              const text = row[textIndex] || "";
+              const group =
+                groupIndex !== -1
+                  ? row[groupIndex] || "default_group"
+                  : "default_group";
+              const textId = idIndex !== -1 ? row[idIndex] || "" : "";
               let context = {
                 text,
+                group,
+                textId,
                 row,
                 source_text: text,
                 tokens: [],
@@ -549,7 +554,8 @@ window.addEventListener(EVENT_INPUT_DID_GET_DATA, async (e) => {
       i += 5;
     } while (i < linesCount);
   }
-  // console.log(processedRows);
+  groups = Array.from(new Set(processedRows.map((row) => row.group)));
+
   // Word count from context.words
   const wordCount = {};
   processedRows.forEach(({ words }) => {
@@ -574,6 +580,7 @@ window.addEventListener(EVENT_INPUT_DID_GET_DATA, async (e) => {
       alias_id: row.alias_id,
     };
   });
+  console.log(processedRows);
   console.log(wordDict);
   console.log(wordRows);
   const didFinishProcessingEvent = new CustomEvent(

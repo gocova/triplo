@@ -130,6 +130,8 @@ export class WordTable extends LitElement {
     super();
     this.wordRows = [];
     this._matched = new Set();
+    this._sortAsc = true;
+    this._sortColumn = "id";
   }
   connectedCallback() {
     super.connectedCallback();
@@ -142,6 +144,20 @@ export class WordTable extends LitElement {
   }
   render() {
     // console.log(this.wordRows);
+    const sortColumn = this._sortColumn;
+    const sortAsc = this._sortAsc;
+    this.wordRows.sort((a, b) => {
+      let valA = a[sortColumn];
+      let valB = b[sortColumn];
+      if (sortColumn === "word")
+        return sortAsc ? valA.localeCompare(valB) : valB.localeCompare(valA);
+      if (sortColumn === "alias_id") {
+        valA = valA || 0;
+        valB = valB || 0;
+      }
+      return sortAsc ? valA - valB : valB - valA;
+    });
+
     const renderedRows = this.wordRows.map(
       (row) =>
         html`<tr>
@@ -196,11 +212,11 @@ export class WordTable extends LitElement {
               <th>
                 <input type="checkbox" @click="${this._toggleAllSelect}" />
               </th>
-              <th onclick="setSort('id')">ID</th>
-              <th onclick="setSort('word')">Word</th>
-              <th onclick="setSort('count')">Count</th>
+              <th @click="${() => this._setSort("id")}">ID</th>
+              <th @click="${() => this._setSort("word")}"">Word</th>
+              <th @click="${() => this._setSort("count")}"">Count</th>
               <th>Enabled</th>
-              <th onclick="setSort('alias_id')">Alias</th>
+              <th @click="${() => this._setSort("alias_id")}">Alias</th>
             </tr>
           </thead>
           <tbody>
@@ -238,6 +254,15 @@ export class WordTable extends LitElement {
         this.requestUpdate();
       }
     }
+  }
+  _setSort(column) {
+    if (this._sortColumn === column) {
+      this._sortAsc = !this._sortAsc;
+    } else {
+      this._sortColumn = column;
+      this._sortAsc = true;
+    }
+    this.requestUpdate();
   }
 }
 

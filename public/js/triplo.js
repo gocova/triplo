@@ -179,6 +179,7 @@ export class WordTable extends LitElement {
               class="enabledCheckbox"
               data-id="${row.id}"
               .checked="${row.enabled}"
+              @change="${this._handleEnableWord}"
             />
           </td>
           <td>
@@ -210,13 +211,13 @@ export class WordTable extends LitElement {
           <thead>
             <tr>
               <th>
-                <input type="checkbox" @click="${this._toggleAllSelect}" />
+                <input type="checkbox" @click="${this._handleToggleAllSelect}" />
               </th>
-              <th @click="${() => this._setSort("id")}">ID</th>
-              <th @click="${() => this._setSort("word")}"">Word</th>
-              <th @click="${() => this._setSort("count")}"">Count</th>
+              <th @click="${() => this._handleSetSort("id")}">ID</th>
+              <th @click="${() => this._handleSetSort("word")}"">Word</th>
+              <th @click="${() => this._handleSetSort("count")}"">Count</th>
               <th>Enabled</th>
-              <th @click="${() => this._setSort("alias_id")}">Alias</th>
+              <th @click="${() => this._handleSetSort("alias_id")}">Alias</th>
             </tr>
           </thead>
           <tbody>
@@ -226,7 +227,7 @@ export class WordTable extends LitElement {
       </div>
       ${sidePanel}`;
   }
-  _toggleAllSelect(e) {
+  _handleToggleAllSelect(e) {
     const checked = e.target?.checked === true;
     this.wordRows = this.wordRows.map((row) => {
       row.selected = checked;
@@ -244,7 +245,7 @@ export class WordTable extends LitElement {
       const rowId = parseInt(e.target.dataset.id);
       const row = this.wordRows.find((r) => r.id === rowId);
       if (row) {
-        console.log(row);
+        // console.log(row);
         row.selected = !row.selected;
         if (row.selected) {
           this._matched.add(row.word);
@@ -255,7 +256,7 @@ export class WordTable extends LitElement {
       }
     }
   }
-  _setSort(column) {
+  _handleSetSort(column) {
     if (this._sortColumn === column) {
       this._sortAsc = !this._sortAsc;
     } else {
@@ -263,6 +264,18 @@ export class WordTable extends LitElement {
       this._sortAsc = true;
     }
     this.requestUpdate();
+  }
+  _handleEnableWord(e) {
+    if (e.target?.dataset?.id) {
+      const rowId = parseInt(e.target.dataset.id);
+      const row = this.wordRows.find((r) => r.id === rowId);
+      if (row) {
+        // console.log(row);
+        row.enabled = !row.enabled;
+
+        this.requestUpdate();
+      }
+    }
   }
 }
 

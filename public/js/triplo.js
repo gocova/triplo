@@ -183,27 +183,31 @@ export class WordTable extends LitElement {
         return s;
       }, new Set()),
     ).map((ctx) => ctx.text);
-    const sidePanel = html`<div class="">
+    const sidePanel = html`<div class="related-text">
       <h4>Descripciones relacionadas (${matchedDescriptions.length})</h4>
       <ul>
         ${matchedDescriptions.map((d) => html`<li>${d}</li>`)}
       </ul>
     </div>`;
-    return html`<table class="word-table">
-        <thead>
-          <tr>
-            <th><input type="checkbox" @click="${this._toggleAllSelect}" /></th>
-            <th onclick="setSort('id')">ID</th>
-            <th onclick="setSort('word')">Word</th>
-            <th onclick="setSort('count')">Count</th>
-            <th>Enabled</th>
-            <th onclick="setSort('alias_id')">Alias</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${renderedRows}
-        </tbody>
-      </table>
+    return html`<div class="word-table-container">
+        <table class="word-table">
+          <thead>
+            <tr>
+              <th>
+                <input type="checkbox" @click="${this._toggleAllSelect}" />
+              </th>
+              <th onclick="setSort('id')">ID</th>
+              <th onclick="setSort('word')">Word</th>
+              <th onclick="setSort('count')">Count</th>
+              <th>Enabled</th>
+              <th onclick="setSort('alias_id')">Alias</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${renderedRows}
+          </tbody>
+        </table>
+      </div>
       ${sidePanel}`;
   }
   _toggleAllSelect(e) {

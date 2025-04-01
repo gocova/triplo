@@ -31,10 +31,24 @@ body {
     .part-details {
         display: flex;
         flex-flow: column nowrap;
+        width: 100%;
         .initial-setup {
             display: flex;
             flex-flow: column nowrap;
             border: 0.5rem solid transparent;
+        }
+        .main {
+            height: 100%;
+            display: flex;
+            flex-flow: column nowrap;
+
+            .dictionary-setup {
+                height: 33vh;
+            }
+            .main-contents {
+                display: 100%;
+                background-color: darkslategrey
+            }
         }
     }
 }
@@ -87,4 +101,47 @@ body {
 
 .button.is-outlined {
     background-color: transparent;
+}
+
+word-table {
+    display: flex;
+    flex-flow: row nowrap;
+
+    /* height: 33vh; */
+
+}
+.word-table-container {
+    height: 33vh;
+    overflow-y: scroll;
+    border-radius: var(--cova-panel-radius);
+    width: 35%;
+
+    table.word-table {
+        width: 100%;
+    
+        thead th {
+            position: sticky;
+            top: 0;
+            background: #f0f0f0;
+            border-bottom: 2px solid #ddd;
+            text-align: left;
+            padding: 8px;
+        }
+        tbody td {
+            border-bottom: 1px solid #eee;
+            padding: 8px;
+        }
+    }
+}
+
+.related-text {
+    h4 {
+        margin-top: 0;
+        margin-bottom: 0.5rem;
+    }
+    ul {
+        height: calc(33vh - 18px - 0.5rem);
+        margin: 0;
+        overflow-y: scroll;
+    }
 }

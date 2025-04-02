@@ -270,7 +270,11 @@ export class WordTable extends LitElement {
     const selected = this.wordRows.filter((r) => r.selected /* && !r.aliasId*/);
 
     if (selected.length === 0) return;
-    const newAliasId = `${this._selectedGroup}_${aliasCounter++}`;
+    // const newAliasId = `${this._selectedGroup}_${aliasCounter++}`;
+    const newAliasId = (this._selectedGroup || "[unselected]").concat(
+      "_",
+      aliasCounter++,
+    );
 
     const words = selected.map((r) => r.word);
     let count = 0;
@@ -286,6 +290,7 @@ export class WordTable extends LitElement {
     });
     aliasInfo[newAliasId] = {
       type: "alias_token",
+      aliasId: newAliasId,
       count: enabled ? count : 0,
       words,
       enabled,
@@ -298,10 +303,19 @@ export class WordTable extends LitElement {
     const selected = this.wordRows.filter((r) => r.selected /* && r.aliasId */);
     selected.forEach((row) => {
       if (row.aliasId) {
-        if (aliasInfo[row.aliasId]) {
-          // This is not working as expected
-          // TODO correct
-          delete aliasInfo[row.aliasId];
+        const info = aliasInfo[row.aliasId];
+        if (info) {
+          const { words } = info;
+          const wordIndex = words.indexOf(row.word);
+          if (wordIndex >= 0) {
+            words.splice(wordIndex, 1);
+            if (info.enabled) {
+              info.count -= row.count;
+            }
+            // info.words = words; // not required since we are using the same ref
+          }
+          const wordsLen = words.length;
+          if (wordsLen <= 0) delete aliasInfo[row.aliasId];
         }
         row.aliasId = null;
       }

@@ -413,6 +413,11 @@ export class TrainingSets extends LitElement {
 
   constructor() {
     super();
+    this._collectedPaths = [];
+
+    // bound funcs required for the visualization
+    this._boundHandleProcessorDidCollectPaths =
+      this._handleProcessorDidCollectPaths.bind(this);
   }
   connectedCallback() {
     super.connectedCallback();
@@ -422,25 +427,56 @@ export class TrainingSets extends LitElement {
     linkElem.setAttribute("rel", "stylesheet");
     linkElem.setAttribute("href", "css/cova.css");
     this.renderRoot.appendChild(linkElem);
+
+    window.addEventListener(
+      EVENT_PROCESSOR_DID_COLLECT_PATHS,
+      this._boundHandleProcessorDidCollectPaths,
+    );
+  }
+  disconnectedCallback() {
+    window.removeEventListener(
+      EVENT_PROCESSOR_DID_COLLECT_PATHS,
+      this._boundHandleProcessorDidCollectPaths ||
+        this._handleProcessorDidCollectPaths,
+    );
+    super.disconnectedCallback();
   }
 
   render() {
+    const trainingSetsDetails = html`${this._collectedPaths.map(
+      (p) =>
+        html`<tr>
+          <td><input type="text" .value="${p.query}" /></td>
+          <td>${p.path}</td>
+          <td>${p.count}</td>
+          <td>rows...</td>
+        </tr>`,
+    )}`;
     return html`<div class="training-sets-container">
       <div>Training sets</div>
       <div class="scrollable">
         <table>
           <thead>
             <tr>
-              <th class="training-sets-name-column">Name</th>
+              <th class="training-sets-name-column">Query</th>
               <th class="training-sets-path-column">Path</th>
               <th class="training-sets-size-column">Size</th>
               <th>Related texts</th>
             </tr>
           </thead>
-          <tbody></tbody>
+          <tbody>
+            ${trainingSetsDetails}
+          </tbody>
         </table>
       </div>
     </div>`;
+  }
+  _handleProcessorDidCollectPaths() {
+    console.info(
+      `-> TrainingSets._handleProcessorDidCollectPaths: Got called...'`,
+    );
+    this._collectedPaths = collectedPaths || [];
+    this.requestUpdate();
   }
 }
 

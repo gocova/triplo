@@ -185,7 +185,7 @@ word-table {
     .scrollable {
         overflow-y: scroll;
         border-radius: var(--cova-panel-radius);
-        height: calc(100vh - var(--cova-group-setup-height) - var(--cova-word-table-toolbar-height));
+        /* height: calc(100vh - var(--cova-group-setup-height) - var(--cova-word-table-toolbar-height)); */
         width: 100%;
 
         table {
@@ -200,7 +200,10 @@ word-table {
             }
             
             .training-sets-name-column {
-                width:25%;
+                width:20%;
+            }
+            .training-sets-path-column {
+                width: 25%;
             }
             .training-sets-size-column {
                 width:5%;

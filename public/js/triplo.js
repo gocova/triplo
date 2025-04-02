@@ -195,6 +195,7 @@ export class WordTable extends LitElement {
         <div class="word-table-toolbar">
             <span>${this.selectedGroup}</span>
             <button @click="${this._handleExportRequest}">Export</button>
+            <span id="alias-download-file"></span>
             <input id="alias-upload-file" type="file" @change="${this._handleImportAlias}"/>
         </div>
         <div class="scrollable">
@@ -339,10 +340,25 @@ export class WordTable extends LitElement {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = "aliasInfo.json";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    a.download = (this.selectedGroup || "[unselected]").concat(
+      " aliasInfo.json",
+    );
+    a.textContent = "Download";
+    a.style.display = "block";
+
+    const downloadElementParent = this.renderRoot.querySelector(
+      "#alias-download-file",
+    );
+    if (downloadElementParent) {
+      downloadElementParent.appendChild(a);
+      setTimeout(() => {
+        URL.revokeObjectURL(url);
+        a.remove();
+      }, 60000);
+    }
+    // document.body.appendChild(a);
+    // a.click();
+    // document.body.removeChild(a);
   }
   _handleImportAlias(event) {
     console.info(`-> WordTable._handleImportAlias: Importing...`);

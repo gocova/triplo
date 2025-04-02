@@ -56,35 +56,6 @@ body {
         }
     }
 
-    /* .project-parts {
-        min-width: var(--cova-project-parts-width);
-    }
-
-    .part-details {
-        display: flex;
-        flex-flow: column nowrap;
-        width: 100%;
-        .initial-setup {
-            display: flex;
-            flex-flow: column nowrap;
-            border: 0.5rem solid transparent;
-        }
-        .main {
-            height: 100%;
-            display: flex;
-            flex-flow: column nowrap;
-
-            .dictionary-setup {
-                height: 33vh;
-                display: flex;
-                flex-flow: row nowrap;
-            }
-            .main-contents {
-                display: 100%;
-                background-color: darkslategrey
-            }
-        }
-    } */
 }
 
 .panel {
@@ -151,6 +122,9 @@ word-table {
 
     .word-table-toolbar {
         height: var(--cova-word-table-toolbar-height);
+        display: flex;
+        flex-flow: row nowrap;
+        justify-content: space-between;
     }
 
     .scrollable {

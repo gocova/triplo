@@ -193,7 +193,9 @@ export class WordTable extends LitElement {
     </div>`;
     return html`<div class="word-table-container">
         <div class="word-table-toolbar">
+            <span>${this.selectedGroup}</span>
             <button @click="${this._handleExportRequest}">Export</button>
+            <input id="alias-upload-file" type="file" @change="${this._handleImportAlias}"/>
         </div>
         <div class="scrollable">
             <table class="word-table">
@@ -276,7 +278,7 @@ export class WordTable extends LitElement {
 
     if (selected.length === 0) return;
     // const newAliasId = `${this._selectedGroup}_${aliasCounter++}`;
-    const newAliasId = (this._selectedGroup || "[unselected]").concat(
+    const newAliasId = (this.selectedGroup || "[unselected]").concat(
       "_",
       aliasCounter++,
     );
@@ -341,6 +343,49 @@ export class WordTable extends LitElement {
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
+  }
+  _handleImportAlias(event) {
+    console.info(`-> WordTable._handleImportAlias: Importing...`);
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        aliasInfo = JSON.parse(e.target.result);
+
+        // Update wordRows if already loaded
+        if (wordRows.length > 0) {
+          // Reset current wordRows
+          wordRows.forEach((row) => {
+            row.aliasId = null;
+            // row.alias = "";
+            row.enabled = true;
+          });
+          // Reflect new data
+          Object.entries(aliasInfo).forEach(([aliasId, info]) => {
+            const { enabled } = info;
+            info.words.forEach((word) => {
+              const row = wordRows.find((r) => r.word === word);
+              if (row) {
+                row.aliasId = aliasId;
+                // row.alias = aliasId;
+                row.enabled = enabled;
+              }
+            });
+          });
+        }
+        this.requestUpdate();
+        // alert("Alias info imported successfully.");
+      } catch (err) {
+        alert("Failed to import alias info.");
+      }
+      const fileUploadElement =
+        this.renderRoot.querySelector("#alias-upload-file");
+      if (fileUploadElement) {
+        fileUploadElement.value = "";
+      }
+    };
+    reader.readAsText(file);
   }
 }
 
@@ -456,6 +501,9 @@ export class TriploApp extends LitElement {
     this.wordRows = wordRows;
     this._groups = groups;
     this._selectedGroup = groups[0] || null;
+    console.log("groups");
+    console.log(groups);
+    // this.requestUpdate();
   }
   _handleRequestEnrichment() {
     console.info(

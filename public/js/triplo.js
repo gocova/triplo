@@ -8,6 +8,7 @@ const EVENT_PROCESSOR_DID_FINISH_PROCESSING = "processor/did-finish-processing";
 const EVENT_APP_DID_REQUEST_ENRICHMENT = "app/did-request-enrichment";
 const EVENT_PROCESSOR_DID_ENRICH = "processor/did-enrich";
 const EVENT_PROCESSOR_DID_BUILD_TOKEN_TREE = "processor/did-build-token-tree";
+const EVENT_PROCESSOR_DID_COLLECT_PATHS = "processor/did-collect-paths";
 
 export class InputPanel extends LitElement {
   static properties = {
@@ -593,6 +594,7 @@ let tokenTree = {
   children: {},
   rows: [],
 };
+let collectedPaths = [];
 
 // === Pipeline stages ===
 const pipeline = [
@@ -792,6 +794,44 @@ function buildTokenTree() {
   window.dispatchEvent(new CustomEvent(EVENT_PROCESSOR_DID_BUILD_TOKEN_TREE));
 }
 
+function collectPathsFromTreeIterative(root = tokenTree) {
+  const results = [];
+  const queue = [];
+
+  // Start with root's direct children
+  for (const key in root.children) {
+    const child = root.children[key];
+    queue.push({
+      node: child,
+      path: [child.token],
+    });
+  }
+
+  while (queue.length > 0) {
+    const { node, path } = queue.shift();
+
+    results.push({
+      query: "",
+      path,
+      rows: node.rows,
+      count: node.rows.length,
+    });
+
+    for (const key in node.children) {
+      const child = node.children[key];
+      queue.push({
+        node: child,
+        path: [...path, child.token],
+      });
+    }
+  }
+
+  // return results;
+  results.sort((a, b) => b.count - a.count);
+  collectedPaths = results;
+  window.dispatchEvent(new CustomEvent(EVENT_PROCESSOR_DID_COLLECT_PATHS));
+}
+
 function traverseTreeForTriplets(node = tokenTree, path = [], triplets = []) {
   const keys = Object.keys(node.children);
   if (keys.length === 0 && node.rows.length > 0) {
@@ -941,4 +981,11 @@ window.addEventListener(EVENT_APP_DID_REQUEST_ENRICHMENT, () => {
 window.addEventListener(EVENT_PROCESSOR_DID_ENRICH, () => {
   console.info(`-> Processing event: '${EVENT_PROCESSOR_DID_ENRICH}'`);
   buildTokenTree();
+});
+
+window.addEventListener(EVENT_PROCESSOR_DID_BUILD_TOKEN_TREE, () => {
+  console.info(
+    `-> Processing event: '${EVENT_PROCESSOR_DID_BUILD_TOKEN_TREE}'`,
+  );
+  collectPathsFromTreeIterative();
 });

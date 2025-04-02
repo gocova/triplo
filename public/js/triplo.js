@@ -6,6 +6,8 @@ const EVENT_INPUT_DID_GET_DATA = "input/did-get-data";
 const EVENT_INPUT_DID_REQUEST_DATA_RESET = "input/did-request-data-reset";
 const EVENT_PROCESSOR_DID_FINISH_PROCESSING = "processor/did-finish-processing";
 const EVENT_APP_DID_REQUEST_ENRICHMENT = "app/did-request-enrichment";
+const EVENT_PROCESSOR_DID_ENRICH = "processor/did-enrich";
+const EVENT_PROCESSOR_DID_BUILD_TOKEN_TREE = "processor/did-build-token-tree";
 
 export class InputPanel extends LitElement {
   static properties = {
@@ -269,15 +271,26 @@ export class WordTable extends LitElement {
 
     if (selected.length === 0) return;
     const newAliasId = `${this._selectedGroup}_${aliasCounter++}`;
-    aliasCounts[newAliasId] = 0;
+
+    const words = selected.map((r) => r.word);
+    let count = 0;
+    const enabled = selected[0].enabled;
 
     selected.forEach((row) => {
       if (!row.aliasId) {
         row.aliasId = newAliasId;
-        aliasCounts[newAliasId] += row.enabled ? row.count : 0;
+        count += row.count;
+        row.enabled = enabled;
       }
       row.selected = false;
     });
+    aliasInfo[newAliasId] = {
+      type: "alias_token",
+      count: enabled ? count : 0,
+      words,
+      enabled,
+    };
+
     this._matched.clear();
     this.requestUpdate();
   }
@@ -285,11 +298,10 @@ export class WordTable extends LitElement {
     const selected = this.wordRows.filter((r) => r.selected /* && r.aliasId */);
     selected.forEach((row) => {
       if (row.aliasId) {
-        if (aliasCounts[row.aliasId]) {
-          if (row.enabled) {
-            aliasCounts[row.aliasId] -= row.count;
-            if (aliasCounts[row.aliasId] <= 0) delete aliasCounts[row.aliasId];
-          }
+        if (aliasInfo[row.aliasId]) {
+          // This is not working as expected
+          // TODO correct
+          delete aliasInfo[row.aliasId];
         }
         row.aliasId = null;
       }
@@ -321,6 +333,8 @@ export class TriploApp extends LitElement {
       this._handleInputRequestDataReset.bind(this);
     this._boundHandleProcessorDidFinishProcessing =
       this._handleProcessorDidFinishProcessing.bind(this);
+    this._boundHandleProcessorDidBuildTokenTree =
+      this._handleProcessorDidBuildTokenTree.bind(this);
   }
   connectedCallback() {
     super.connectedCallback();
@@ -343,8 +357,17 @@ export class TriploApp extends LitElement {
       EVENT_PROCESSOR_DID_FINISH_PROCESSING,
       this._boundHandleProcessorDidFinishProcessing, // use this instead of this._handleProcessorDidFinishProcessing()
     );
+    window.addEventListener(
+      EVENT_PROCESSOR_DID_BUILD_TOKEN_TREE,
+      this._boundHandleProcessorDidBuildTokenTree,
+    );
   }
   disconnectedCallback() {
+    window.removeEventListener(
+      EVENT_PROCESSOR_DID_BUILD_TOKEN_TREE,
+      this._boundHandleProcessorDidBuildTokenTree ||
+        this._handleProcessorDidBuildTokenTree,
+    );
     window.removeEventListener(
       EVENT_INPUT_DID_GET_DATA,
       this._boundHandleInputDidGetData || this._handleInputDidGetData,
@@ -413,6 +436,12 @@ export class TriploApp extends LitElement {
     );
     window.dispatchEvent(new CustomEvent(EVENT_APP_DID_REQUEST_ENRICHMENT));
   }
+  _handleProcessorDidBuildTokenTree() {
+    console.info(
+      `TriploApp._handleProcessorDidBuildTokenTree: Will handle '${EVENT_PROCESSOR_DID_BUILD_TOKEN_TREE}'`,
+    );
+    console.log(tokenTree);
+  }
 }
 customElements.define("triplo-app", TriploApp);
 
@@ -424,7 +453,12 @@ let processedRows = [];
 let wordToRows = {}; // optimized word-to-row lookup
 let groups = [];
 let aliasCounter = 0;
-let aliasCounts = {};
+let aliasInfo = {};
+let tokenTree = {
+  // root fo the token tree
+  children: {},
+  rows: [],
+};
 
 // === Pipeline stages ===
 const pipeline = [
@@ -542,25 +576,31 @@ function mapWordsToTokens(ctx) {
 }
 
 function enrichProcessedTokens() {
+  console.info("-> Will enrich tokens...");
   processedRows.forEach((ctx) => {
     const enriched = [];
-    const seenAliases = new Map();
+    const seenAliases = new Set();
 
     ctx.final_tokens.forEach((token) => {
       if (token.type === "word_token") {
         const row = wordRows.find((r) => r.word === token.word);
         if (!row || !row.enabled) return;
 
-        if (row.aliasId) {
+        if (row.aliasId && aliasInfo[row.aliasId]) {
           if (!seenAliases.has(row.aliasId)) {
-            seenAliases.set(row.aliasId, {
-              type: "alias_token",
-              aliasId: row.aliasId,
-              count: aliasCounts[row.aliasId] || 0,
-              words: [token.word],
-            });
-          } else {
-            seenAliases.get(row.aliasId).words.push(token.word);
+            // const { aliasId, count, words, enabled } = aliasInfo[row.aliasId];
+            // enriched.push({
+            //   type: "alias_token",
+            //   aliasId,
+            //   count,
+            //   words,
+            //   enabled,
+            // });
+            // seenAliases.add(aliasId);
+            const aliasToken = aliasInfo[row.aliasId];
+            const { aliasId } = aliasToken;
+            enriched.push(aliasToken);
+            seenAliases.add(aliasId);
           }
         } else {
           enriched.push({ ...token, count: row.count });
@@ -570,10 +610,79 @@ function enrichProcessedTokens() {
       }
     });
 
-    enriched.push(...seenAliases.values());
     ctx.enriched_tokens = enriched;
   });
   console.log("Processed rows enriched.");
+  window.dispatchEvent(new CustomEvent(EVENT_PROCESSOR_DID_ENRICH));
+}
+
+function buildTokenTree() {
+  console.info("-> Will build token tree");
+  tokenTree = { children: {}, rows: [] };
+
+  const innerWordDic = wordRows.reduce((d, row) => {
+    d[row.word] = row;
+    return d;
+  }, {});
+
+  processedRows.forEach((ctx) => {
+    const tokens = ctx.enriched_tokens.filter(
+      (t) => t.type === "word_token" || t.type === "alias_token",
+    );
+    const sorted = [...tokens].sort((a, b) => (b.count || 0) - (a.count || 0));
+
+    let currentNode = tokenTree;
+    for (const token of sorted) {
+      const key = token.aliasId || token.word;
+      let shouldAdd = false;
+      switch (token.type) {
+        case "word_token":
+          let wordRow = innerWordDic[key];
+          shouldAdd = wordRow.enabled;
+          break;
+        case "alias_token":
+          shouldAdd = token.enabled;
+          break;
+      }
+      if (shouldAdd) {
+        if (!currentNode.children[key]) {
+          currentNode.children[key] = { token, children: {}, rows: [] };
+        }
+        currentNode = currentNode.children[key];
+        currentNode.rows.push(ctx);
+      }
+    }
+  });
+
+  console.log("Token tree built.");
+  window.dispatchEvent(new CustomEvent(EVENT_PROCESSOR_DID_BUILD_TOKEN_TREE));
+}
+
+function traverseTreeForTriplets(node = tokenTree, path = [], triplets = []) {
+  const keys = Object.keys(node.children);
+  if (keys.length === 0 && node.rows.length > 0) {
+    const positives = node.rows.map((r) => r.row);
+    const query = path.map((t) => t.alias_id || t.word).join(" ");
+
+    let easyNegs = [],
+      hardNegs = [],
+      extremeNegs = [];
+    // Easy negatives = other leaves
+    for (const t of triplets) {
+      easyNegs.push(...t.positives);
+    }
+
+    // Hard = same parent but different leaf (TODO: expand logic later)
+    // Extreme = different subtree (already included in easyNegs for now)
+
+    triplets.push({ query, positives, easyNegs, hardNegs, extremeNegs });
+  } else {
+    for (const key of keys) {
+      const child = node.children[key];
+      traverseTreeForTriplets(child, [...path, child.token], triplets);
+    }
+  }
+  return triplets;
 }
 
 // === Event handlers ===
@@ -691,6 +800,11 @@ window.addEventListener(EVENT_INPUT_DID_GET_DATA, async (e) => {
 });
 
 window.addEventListener(EVENT_APP_DID_REQUEST_ENRICHMENT, () => {
-  console.info(`-> Processing event: ${EVENT_APP_DID_REQUEST_ENRICHMENT}`);
+  console.info(`-> Processing event: '${EVENT_APP_DID_REQUEST_ENRICHMENT}'`);
   enrichProcessedTokens();
+});
+
+window.addEventListener(EVENT_PROCESSOR_DID_ENRICH, () => {
+  console.info(`-> Processing event: '${EVENT_PROCESSOR_DID_ENRICH}'`);
+  buildTokenTree();
 });

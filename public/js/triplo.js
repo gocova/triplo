@@ -407,6 +407,44 @@ export class WordTable extends LitElement {
 
 customElements.define("word-table", WordTable);
 
+export class TrainingSets extends LitElement {
+  static properties = {};
+
+  constructor() {
+    super();
+  }
+  connectedCallback() {
+    super.connectedCallback();
+
+    // Apply external styles to the shadow dom
+    const linkElem = document.createElement("link");
+    linkElem.setAttribute("rel", "stylesheet");
+    linkElem.setAttribute("href", "css/cova.css");
+    this.renderRoot.appendChild(linkElem);
+  }
+
+  render() {
+    return html`<div class="training-sets-container">
+      <div>Training sets</div>
+      <div class="scrollable">
+        <table>
+          <thead>
+            <tr>
+              <th class="training-sets-name-column">Name</th>
+              <th class="training-sets-path-column">Path</th>
+              <th class="training-sets-size-column">Size</th>
+              <th>Related texts</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>`;
+  }
+}
+
+customElements.define("training-sets", TrainingSets);
+
 export class TriploApp extends LitElement {
   static properties = {
     _inputDisabled: { type: Boolean },
@@ -498,9 +536,14 @@ export class TriploApp extends LitElement {
         </div>
       </div>
       <div class="main">
-        <div class="main-contents">
+        <div class="main-toolbar">
           <button @click="${this._handleRequestEnrichment}">Enrich rows</button>
+          <div class="tree-toolbar">
+            Tree: <button>Get link</button><span id="tree-download-file"></span
+            ><input type="file" />
+          </div>
         </div>
+        <training-sets></training-sets>
       </div>
     </div>`;
   }

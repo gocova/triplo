@@ -6,6 +6,7 @@ body {
 
 :root {
     --cova-group-setup-height: 40vh;
+    --cova-training-sets-height: 50vh;
     --cova-panel-heading-size: 20px;
     --cova-panel-heading-weight: 700;
     --cova-panel-heading-padding: 1em 1.25em;
@@ -22,6 +23,7 @@ body {
     --cova-word-table-title-horizontal-padding: 8px;
     --cova-word-table-title-font-size: 0.7rem;
     --cova-word-table-toolbar-height: 1.5rem;
+    --cova-main-toolbar-vertical-padding: 8px;
 }
 
 #app {
@@ -49,10 +51,19 @@ body {
     }
 
     .main {
-        .main-contents {
+        height: 100%;
+
+        .main-toolbar {
             display: flex;
             flex-flow: row nowrap;
             justify-content: space-around;
+            padding: var(--cova-main-toolbar-vertical-padding) 0;
+
+            .tree-toolbar {
+                display: flex;
+                flex-flow: row nowrap;
+                justify-content: space-between;
+            }
         }
     }
 
@@ -162,6 +173,39 @@ word-table {
         height: calc(var(--cova-group-setup-height) - 18px - 0.5rem);
         margin: 0;
         overflow-y: scroll;
+    }
+}
+
+.training-sets-container {
+    display: flex;
+    flex-flow: row nowrap;
+    background-color: lightslategray;
+    height: var(--cova-training-sets-height);
+
+    .scrollable {
+        overflow-y: scroll;
+        border-radius: var(--cova-panel-radius);
+        height: calc(100vh - var(--cova-group-setup-height) - var(--cova-word-table-toolbar-height));
+        width: 100%;
+
+        table {
+            width: 100%;
+
+            thead th {
+                position: sticky;
+                top: 0;
+                border-bottom: 2px solid #ddd;
+                text-align: left;
+
+            }
+            
+            .training-sets-name-column {
+                width:25%;
+            }
+            .training-sets-size-column {
+                width:5%;
+            }
+        }
     }
 }
 

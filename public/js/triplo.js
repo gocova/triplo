@@ -192,7 +192,9 @@ export class WordTable extends LitElement {
       </ul>
     </div>`;
     return html`<div class="word-table-container">
-        <div class="word-table-toolbar"></div>
+        <div class="word-table-toolbar">
+            <button @click="${this._handleExportRequest}">Export</button>
+        </div>
         <div class="scrollable">
             <table class="word-table">
             <thead>
@@ -326,6 +328,19 @@ export class WordTable extends LitElement {
     });
     this._matched.clear();
     this.requestUpdate();
+  }
+  _handleExportRequest() {
+    console.log("-> WordTable._handleExportRequest: Exporting...");
+    const blob = new Blob([JSON.stringify(aliasInfo, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "aliasInfo.json";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
   }
 }
 

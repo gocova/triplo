@@ -180,13 +180,12 @@ word-table {
     display: flex;
     flex-flow: row nowrap;
     /* background-color: lightslategray; */
-    height: var(--cova-training-sets-height);
+    height: calc(100vh - var(--cova-group-setup-height) - 36px - 1rem);
 
     .scrollable {
         overflow-y: scroll;
         border-radius: var(--cova-panel-radius);
-        /* height: calc(100vh - var(--cova-group-setup-height) - var(--cova-word-table-toolbar-height)); */
-        width: 100%;
+        flex-grow: 1;
 
         table {
             width: 100%;
@@ -202,11 +201,11 @@ word-table {
             }
             
             .training-sets-name-column {
-                width:20%;
+                width:45%;
             }
-            .training-sets-path-column {
-                width: 25%;
-            }
+            /* .training-sets-path-column {
+                width: 45%;
+            } */
             .training-sets-size-column {
                 width:5%;
             }
@@ -242,6 +241,17 @@ word-table {
                 }
 
             }
+        }
+    }
+
+    .related-text {
+        width: 60%;
+        margin-top: 0;
+        margin-bottom: 0.5rem;
+
+        ul {
+            background-color: antiquewhite;
+            height: calc(100vh - var(--cova-group-setup-height) - 36px - 18px - 8px - 1rem);
         }
     }
 }

@@ -414,6 +414,7 @@ export class TrainingSets extends LitElement {
   constructor() {
     super();
     this._collectedPaths = [];
+    this._selectedTrainingSet = -1;
 
     // bound funcs required for the visualization
     this._boundHandleProcessorDidCollectPaths =
@@ -473,7 +474,7 @@ export class TrainingSets extends LitElement {
             </div>
           </td>
           <td>${p.count}</td>
-          <td>rows...</td>
+          <!-- <td>rows...</td> -->
         </tr>`,
     )}`;
     return html`<div class="training-sets-container">
@@ -485,13 +486,17 @@ export class TrainingSets extends LitElement {
               <th class="training-sets-name-column">Query</th>
               <th class="training-sets-path-column">Path</th>
               <th class="training-sets-size-column">Size</th>
-              <th>Related texts</th>
+              <!-- <th>Related texts</th> -->
             </tr>
           </thead>
           <tbody>
             ${trainingSetsDetails}
           </tbody>
         </table>
+      </div>
+      <div class="related-text">
+        <h4>Related texts for '${this._selectedTrainingSet}'</h4>
+        <ul></ul>
       </div>
     </div>`;
   }
@@ -500,6 +505,7 @@ export class TrainingSets extends LitElement {
       `-> TrainingSets._handleProcessorDidCollectPaths: Got called...'`,
     );
     this._collectedPaths = collectedPaths || [];
+    this._selectedTrainingSet = -1;
     this.requestUpdate();
   }
 }

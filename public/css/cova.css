@@ -179,7 +179,7 @@ word-table {
 .training-sets-container {
     display: flex;
     flex-flow: row nowrap;
-    background-color: lightslategray;
+    /* background-color: lightslategray; */
     height: var(--cova-training-sets-height);
 
     .scrollable {
@@ -196,6 +196,8 @@ word-table {
                 top: 0;
                 border-bottom: 2px solid #ddd;
                 text-align: left;
+                background-color: rgb(171,171,191);
+                color: white
 
             }
             
@@ -207,6 +209,38 @@ word-table {
             }
             .training-sets-size-column {
                 width:5%;
+            }
+            tbody td {
+                border-bottom: 1px solid #eee;
+                padding: 4px 8px;
+
+                input.training-set-query {
+                    width: 100%;
+                    /* border: none; */
+                    background-color: transparent;
+                    padding: 0;
+                    margin: 0;
+                    /* font-size: inherit;
+                    color: inherit; */
+                    height: 24px;
+                }
+
+                .path-view {
+                    display: flex;
+                    flex-flow: row nowrap;
+                    align-items: center;
+
+                    .token {
+                        border-right: 1px solid var(--cova-border-weak);
+                        padding: 0 8px;
+
+                        .alias {
+                            display: flex;
+                            flex-flow: column nowrap;
+                        }
+                    }
+                }
+
             }
         }
     }

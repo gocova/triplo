@@ -443,11 +443,35 @@ export class TrainingSets extends LitElement {
   }
 
   render() {
+    const emptyHtml = html``;
+    // const processToken =(token) => {
+    //   swith(token.type){
+    //     default:
+    // return emptyHtml;
+
+    //   }
+    // };
+    const getTokenElement = (token) =>
+      token.type === "alias_token"
+        ? html`<span class="token"
+            >${token.words.map(
+              (w) => html`<div class="alias">${w}</div>`,
+            )}</span
+          >`
+        : token.type === "word_token"
+          ? html`<span class="token">${token.word}</span>`
+          : emptyHtml;
     const trainingSetsDetails = html`${this._collectedPaths.map(
       (p) =>
         html`<tr>
-          <td><input type="text" .value="${p.query}" /></td>
-          <td>${p.path}</td>
+          <td>
+            <input type="text" .value="${p.query}" class="training-set-query" />
+          </td>
+          <td>
+            <div class="path-view">
+              ${p.path.map((token) => getTokenElement(token))}
+            </div>
+          </td>
           <td>${p.count}</td>
           <td>rows...</td>
         </tr>`,

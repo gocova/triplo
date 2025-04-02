@@ -273,6 +273,10 @@ word-table {
             color: white
 
         }
+
+        .attribute-token {
+            color: #ddd;
+        }
     }
 }
 

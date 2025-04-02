@@ -484,6 +484,15 @@ export class TrainingSets extends LitElement {
     const selectedPath = this._collectedPaths.filter(
       (cp) => cp.id === this._selectedTrainingSet,
     )[0];
+    const getClearText = (finalTokens) =>
+      html`${finalTokens.map(
+        (t) =>
+          html`${t.type === "word_token"
+            ? t.word
+            : t.type === "attribute_token"
+              ? html`<span class="attribute-token">${t.value}</span>`
+              : "<|unk|>"}&nbsp;`,
+      )}`;
     const relatedTextsElement = html`<table>
       <thead>
         <tr>
@@ -495,7 +504,8 @@ export class TrainingSets extends LitElement {
           (row) =>
             html`<tr>
               <td>${row.textId}</td>
-              <td>${row.source_text}</td>
+              <!-- <td>${row.source_text}</td> -->
+              <td>${getClearText(row.final_tokens)}</td>
             </tr>`,
         )}
       </tbody>

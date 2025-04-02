@@ -465,6 +465,7 @@ export class TrainingSets extends LitElement {
     const trainingSetsDetails = html`${this._collectedPaths.map(
       (p) =>
         html`<tr>
+          <td>${p.id}</td>
           <td>
             <input type="text" .value="${p.query}" class="training-set-query" />
           </td>
@@ -483,6 +484,7 @@ export class TrainingSets extends LitElement {
         <table>
           <thead>
             <tr>
+              <th class="training-sets-id-column">id</th>
               <th class="training-sets-name-column">Query</th>
               <th class="training-sets-path-column">Path</th>
               <th class="training-sets-size-column">Size</th>
@@ -874,9 +876,11 @@ function collectPathsFromTreeIterative(root = tokenTree) {
   }
 
   while (queue.length > 0) {
+    const id = queue.length - 1;
     const { node, path } = queue.shift();
 
     results.push({
+      id,
       query: "",
       path,
       rows: node.rows,

@@ -199,9 +199,11 @@ word-table {
                 color: white
 
             }
-            
+            .training-sets-id-column {
+                width: 5%;
+            }
             .training-sets-name-column {
-                width:45%;
+                width:40%;
             }
             /* .training-sets-path-column {
                 width: 45%;

@@ -3,7 +3,9 @@ body {
     margin: 0;
     padding: 0;
 }
+
 :root {
+    --cova-group-setup-height: 40vh;
     --cova-panel-heading-size: 20px;
     --cova-panel-heading-weight: 700;
     --cova-panel-heading-padding: 1em 1.25em;
@@ -16,13 +18,35 @@ body {
     --cova-panel-shadow: var(--cova-shadow);
     --cova-panel-width: 320px;
     --cova-project-parts-width: 320px;
+    --cova-word-table-title-vertical-padding: 2px;
+    --cova-word-table-title-horizontal-padding: 8px;
+    --cova-word-table-title-font-size: 0.7rem;
+    --cova-word-table-toolbar-height: 1.5rem;
 }
 
 #app {
-    width: 100vw;
-    height: 100vh;
+    width: calc(100vw - 1rem);
+    height: calc(100vh - 1rem);
     display: flex;
-    flex-flow: row nowrap;
+    flex-flow: column nowrap;
+    border: 0.5rem solid transparent;
+
+    .group-setup {
+        display: flex;
+        flex-flow: row nowrap;
+        height: var(--cova-group-setup-height);
+
+        .dictionary-setup {
+            width: 100%;
+            display: flex;
+            flex-flow: row nowrap;
+
+            .group-selector {
+                width: 25%;
+                max-width: 250px;
+            }
+        }
+    }
 
     .project-parts {
         min-width: var(--cova-project-parts-width);
@@ -58,7 +82,7 @@ body {
 
 .panel {
     box-shadow: var(--cova-panel-shadow);
-    max-width: var(--cova-panel-width);
+    width: var(--cova-panel-width);
     .panel-heading {
         background-color: rgb(64, 70, 84);
         box-sizing: border-box;
@@ -115,27 +139,37 @@ word-table {
 
 }
 .word-table-container {
-    height: 33vh;
-    overflow-y: scroll;
-    border-radius: var(--cova-panel-radius);
+    /* height: calc(var(--cova-group-setup-height)); */
     width: 35%;
 
-    table.word-table {
-        width: 100%;
+    .word-table-toolbar {
+        height: var(--cova-word-table-toolbar-height);
+    }
+
+    .scrollable {
+        overflow-y: scroll;
+        border-radius: var(--cova-panel-radius);
+        height: calc(var(--cova-group-setup-height) - var(--cova-word-table-toolbar-height));
     
-        thead th {
-            position: sticky;
-            top: 0;
-            background: #f0f0f0;
-            border-bottom: 2px solid #ddd;
-            text-align: left;
-            padding: 8px;
-        }
-        tbody td {
-            border-bottom: 1px solid #eee;
-            padding: 8px;
+        table.word-table {
+            width: 100%;
+        
+            thead th {
+                position: sticky;
+                top: 0;
+                background: #f0f0f0;
+                border-bottom: 2px solid #ddd;
+                text-align: left;
+                padding: var(--cova-word-table-title-vertical-padding) var(--cova-word-table-title-horizontal-padding);
+                font-size: var(--cova-word-table-title-font-size);
+            }
+            tbody td {
+                border-bottom: 1px solid #eee;
+                padding: 8px;
+            }
         }
     }
+
 }
 
 .related-text {

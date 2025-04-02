@@ -192,27 +192,30 @@ export class WordTable extends LitElement {
       </ul>
     </div>`;
     return html`<div class="word-table-container">
-        <table class="word-table">
-          <thead>
-            <tr>
-              <th>
-                <input type="checkbox" @click="${this._handleToggleAllSelect}" />
-              </th>
-              <th @click="${() => this._handleSetSort("id")}">ID</th>
-              <th @click="${() => this._handleSetSort("word")}"">Word</th>
-              <th @click="${() => this._handleSetSort("count")}"">Count</th>
-              <th>Enabled</th>
-              <th >
-                  <span @click="${() => this._handleSetSort("aliasId")}">Alias</span>
-                  <button @click="${this._handleAddAlias}">Add</button>
-                  <button @click="${this._handleRemoveAlias}">Remove</button>
-              </th>
-            </tr>
-          </thead>
-          <tbody>
-            ${renderedRows}
-          </tbody>
-        </table>
+        <div class="word-table-toolbar"></div>
+        <div class="scrollable">
+            <table class="word-table">
+            <thead>
+                <tr>
+                <th>
+                    <input type="checkbox" @click="${this._handleToggleAllSelect}" />
+                </th>
+                <th @click="${() => this._handleSetSort("id")}">ID</th>
+                <th @click="${() => this._handleSetSort("word")}"">Word</th>
+                <th @click="${() => this._handleSetSort("count")}"">Count</th>
+                <th>Enabled</th>
+                <th >
+                    <span @click="${() => this._handleSetSort("aliasId")}">Alias</span>
+                    <button @click="${this._handleAddAlias}">Add</button>
+                    <button @click="${this._handleRemoveAlias}">Remove</button>
+                </th>
+                </tr>
+            </thead>
+            <tbody>
+                ${renderedRows}
+            </tbody>
+            </table>
+        </div>
       </div>
       ${sidePanel}`;
   }
@@ -401,31 +404,26 @@ export class TriploApp extends LitElement {
   render() {
     const groupsElement = html`${this._groups.map((g) => html`<li>${g}</li>`)}`;
     return html`<div id="app">
-      <div class="project-parts"></div>
-      <div class="part-details">
-        <div class="part-title-bar"></div>
+      <div class="group-setup">
         <div class="initial-setup">
           <input-panel .disabled="${this._inputDisabled}"></input-panel>
           <div class="input-processing-progress" style="display: none"></div>
-          <div class="dictionary panel" style="display: none"></div>
         </div>
-        <div class="main">
-          <div class="dictionary-setup">
-            <div class="group-selector">
-              <ul>
-                ${groupsElement}
-              </ul>
-            </div>
-            <word-table
-              .wordRows="${this.wordRows}"
-              .selectedGroup="${this._selectedGroup}"
-            ></word-table>
+        <div class="dictionary-setup">
+          <div class="group-selector">
+            <ul>
+              ${groupsElement}
+            </ul>
           </div>
-          <div class="main-contents">
-            <button @click="${this._handleRequestEnrichment}">
-              Enrich rows
-            </button>
-          </div>
+          <word-table
+            .wordRows="${this.wordRows}"
+            .selectedGroup="${this._selectedGroup}"
+          ></word-table>
+        </div>
+      </div>
+      <div class="main">
+        <div class="main-contents">
+          <button @click="${this._handleRequestEnrichment}">Enrich rows</button>
         </div>
       </div>
     </div>`;

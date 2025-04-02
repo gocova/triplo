@@ -211,33 +211,40 @@ word-table {
             .training-sets-size-column {
                 width:5%;
             }
-            tbody td {
-                border-bottom: 1px solid #eee;
-                padding: 4px 8px;
-
-                input.training-set-query {
-                    width: 100%;
-                    /* border: none; */
-                    background-color: transparent;
-                    padding: 0;
-                    margin: 0;
-                    /* font-size: inherit;
-                    color: inherit; */
-                    height: 24px;
+            tbody {
+                tr.selected {
+                    background-color: rgba(255,235,59,0.3);
+                    box-shadow: inset 4px 0 0 #ffeb;
+                    transition: background-color 0.3s ease-in-out;
                 }
+                td {
+                    border-bottom: 1px solid #eee;
+                    padding: 4px 8px;
 
-                .path-view {
-                    display: flex;
-                    flex-flow: row nowrap;
-                    align-items: center;
+                    input.training-set-query {
+                        width: 100%;
+                        /* border: none; */
+                        background-color: transparent;
+                        padding: 0;
+                        margin: 0;
+                        /* font-size: inherit;
+                        color: inherit; */
+                        height: 24px;
+                    }
 
-                    .token {
-                        border-right: 1px solid var(--cova-border-weak);
-                        padding: 0 8px;
+                    .path-view {
+                        display: flex;
+                        flex-flow: row nowrap;
+                        align-items: center;
 
-                        .alias {
-                            display: flex;
-                            flex-flow: column nowrap;
+                        .token {
+                            border-right: 1px solid var(--cova-border-weak);
+                            padding: 0 8px;
+
+                            .alias {
+                                display: flex;
+                                flex-flow: column nowrap;
+                            }
                         }
                     }
                 }
@@ -250,10 +257,21 @@ word-table {
         width: 60%;
         margin-top: 0;
         margin-bottom: 0.5rem;
+        border-left: 1rem solid transparent;
+        overflow-y: scroll;
 
-        ul {
+        /* ul {
             background-color: antiquewhite;
             height: calc(100vh - var(--cova-group-setup-height) - 36px - 18px - 8px - 1rem);
+        } */
+        table thead th {
+            position: sticky;
+            top: 0;
+            border-bottom: 2px solid #ddd;
+            text-align: left;
+            background-color: #d0d0d0;
+            color: white
+
         }
     }
 }

@@ -464,7 +464,10 @@ export class TrainingSets extends LitElement {
           : emptyHtml;
     const trainingSetsDetails = html`${this._collectedPaths.map(
       (p) =>
-        html`<tr>
+        html`<tr
+          @click="${() => this._handleTrainingSetSelection(p.id)}"
+          class="${p.id === this._selectedTrainingSet ? "selected" : ""}"
+        >
           <td>${p.id}</td>
           <td>
             <input type="text" .value="${p.query}" class="training-set-query" />
@@ -478,6 +481,25 @@ export class TrainingSets extends LitElement {
           <!-- <td>rows...</td> -->
         </tr>`,
     )}`;
+    const selectedPath = this._collectedPaths.filter(
+      (cp) => cp.id === this._selectedTrainingSet,
+    )[0];
+    const relatedTextsElement = html`<table>
+      <thead>
+        <tr>
+          <th colspan="2">Related texts for '${this._selectedTrainingSet}'</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${(selectedPath?.rows || []).map(
+          (row) =>
+            html`<tr>
+              <td>${row.textId}</td>
+              <td>${row.source_text}</td>
+            </tr>`,
+        )}
+      </tbody>
+    </table>`;
     return html`<div class="training-sets-container">
       <div>Training sets</div>
       <div class="scrollable">
@@ -496,10 +518,7 @@ export class TrainingSets extends LitElement {
           </tbody>
         </table>
       </div>
-      <div class="related-text">
-        <h4>Related texts for '${this._selectedTrainingSet}'</h4>
-        <ul></ul>
-      </div>
+      <div class="related-text">${relatedTextsElement}</div>
     </div>`;
   }
   _handleProcessorDidCollectPaths() {
@@ -508,6 +527,10 @@ export class TrainingSets extends LitElement {
     );
     this._collectedPaths = collectedPaths || [];
     this._selectedTrainingSet = -1;
+    this.requestUpdate();
+  }
+  _handleTrainingSetSelection(trainingSetId) {
+    this._selectedTrainingSet = trainingSetId;
     this.requestUpdate();
   }
 }
@@ -880,7 +903,7 @@ function collectPathsFromTreeIterative(root = tokenTree) {
     const { node, path } = queue.shift();
 
     results.push({
-      id,
+      id: results.length,
       query: "",
       path,
       rows: node.rows,

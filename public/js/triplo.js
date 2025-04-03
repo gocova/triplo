@@ -7,8 +7,8 @@ const EVENT_INPUT_DID_REQUEST_DATA_RESET = "input/did-request-data-reset";
 const EVENT_PROCESSOR_DID_FINISH_PROCESSING = "processor/did-finish-processing";
 const EVENT_APP_DID_REQUEST_ENRICHMENT = "app/did-request-enrichment";
 const EVENT_PROCESSOR_DID_ENRICH = "processor/did-enrich";
-const EVENT_PROCESSOR_DID_BUILD_TOKEN_TREE = "processor/did-build-token-tree";
-const EVENT_PROCESSOR_DID_COLLECT_PATHS = "processor/did-collect-paths";
+const EVENT_PROCESSOR_DID_GENERATE_TOKEN_SETS =
+  "processor/did-generate-token-sets";
 
 export class InputPanel extends LitElement {
   static properties = {
@@ -416,12 +416,12 @@ export class TrainingSets extends LitElement {
 
   constructor() {
     super();
-    this._collectedPaths = [];
-    this._selectedTrainingSet = -1;
+    this._tokenSets = [];
+    this._selectedTrainingSet = null;
 
     // bound funcs required for the visualization
-    this._boundHandleProcessorDidCollectPaths =
-      this._handleProcessorDidCollectPaths.bind(this);
+    this._boundHandleProcessorDidGenerateTokenSets =
+      this._handleProcessorDidGenerateTokenSets.bind(this);
   }
   connectedCallback() {
     super.connectedCallback();
@@ -433,16 +433,17 @@ export class TrainingSets extends LitElement {
     this.renderRoot.appendChild(linkElem);
 
     window.addEventListener(
-      EVENT_PROCESSOR_DID_COLLECT_PATHS,
-      this._boundHandleProcessorDidCollectPaths,
+      EVENT_PROCESSOR_DID_GENERATE_TOKEN_SETS,
+      this._boundHandleProcessorDidGenerateTokenSets,
     );
   }
   disconnectedCallback() {
     window.removeEventListener(
-      EVENT_PROCESSOR_DID_COLLECT_PATHS,
-      this._boundHandleProcessorDidCollectPaths ||
-        this._handleProcessorDidCollectPaths,
+      EVENT_PROCESSOR_DID_GENERATE_TOKEN_SETS,
+      this._boundHandleProcessorDidGenerateTokenSets ||
+        this._handleProcessorDidGenerateTokenSets,
     );
+
     super.disconnectedCallback();
   }
 
@@ -457,42 +458,34 @@ export class TrainingSets extends LitElement {
         : token.type === "word_token"
           ? html`<span class="token">${token.word}</span>`
           : emptyHtml;
-    const trainingSetsDetails = html`${this._collectedPaths.map(
-      (p) =>
-        html`<tr
-          @click="${() => this._handleTrainingSetSelection(p.id)}"
-          class="${p.id === this._selectedTrainingSet ? "selected" : ""}"
+    const trainingSetsDetails = html`${Object.keys(this._tokenSets).map(
+      (key) => {
+        const p = this._tokenSets[key];
+        return html`<tr
+          @click="${() => this._handleTrainingSetSelection(key)}"
+          class="${key === this._selectedTrainingSet ? "selected" : ""}"
         >
-          <td>${p.id}</td>
-          <td>
-            <input
-              type="checkbox"
-              .checked="${true}"
-              data-id="${p.id}"
-              @change="${() => {}}"
-            />
-          </td>
           <td>
             <input
               type="text"
               .value="${p.query}"
               class="training-set-query"
-              data-id="${p.id}"
+              data-id="${key}"
               @change="${this._handleQueryChange}"
             />
           </td>
-          <td class="${p.isLeaf ? "is-leaf" : ""}">
+          <!-- <td class="${p.isLeaf ? "is-leaf" : ""}"> -->
+          <td>
             <div class="path-view">
-              ${p.path.map((token) => getTokenElement(token))}
+              ${p.tokens.map((token) => getTokenElement(token))}
             </div>
           </td>
           <td>${p.count}</td>
           <!-- <td>rows...</td> -->
-        </tr>`,
+        </tr>`;
+      },
     )}`;
-    const selectedPath = this._collectedPaths.filter(
-      (cp) => cp.id === this._selectedTrainingSet,
-    )[0];
+    const selectedPath = this._tokenSets[this._selectedTrainingSet];
     const getClearText = (finalTokens) =>
       html`${finalTokens.map(
         (t) =>
@@ -525,8 +518,6 @@ export class TrainingSets extends LitElement {
         <table>
           <thead>
             <tr>
-              <th class="training-sets-id-column">id</th>
-              <th class="training-sets-enabled-column">Enabled</th>
               <th class="training-sets-name-column">Query</th>
               <th class="training-sets-path-column">Path</th>
               <th class="training-sets-size-column">Size</th>
@@ -541,12 +532,12 @@ export class TrainingSets extends LitElement {
       <div class="related-text">${relatedTextsElement}</div>
     </div>`;
   }
-  _handleProcessorDidCollectPaths() {
+  _handleProcessorDidGenerateTokenSets() {
     console.info(
-      `-> TrainingSets._handleProcessorDidCollectPaths: Got called...'`,
+      `-> TrainingSets._handleProcessorDidGenerateTokenSets: Got called...'`,
     );
-    this._collectedPaths = collectedPaths || [];
-    this._selectedTrainingSet = -1;
+    this._tokenSets = tokenSets || {};
+    this._selectedTrainingSet = null;
     this.requestUpdate();
   }
   _handleTrainingSetSelection(trainingSetId) {
@@ -557,10 +548,10 @@ export class TrainingSets extends LitElement {
     console.log("-> TrainingSets._handleQueryChange: Updating...");
     if (e.target) {
       if (e.target.dataset?.id) {
-        const rowId = parseInt(e.target.dataset.id);
-        const cp = collectedPaths.find((r) => r.id === rowId);
-        if (cp) {
-          cp.query = e.target.value || "";
+        const key = e.target.dataset.id;
+        const relevantSet = this._tokenSets[key];
+        if (relevantSet) {
+          relevantSet.query = e.target.value || "";
           this.requestUpdate();
         }
       }
@@ -590,7 +581,7 @@ export class TriploApp extends LitElement {
     this._boundHandleProcessorDidFinishProcessing =
       this._handleProcessorDidFinishProcessing.bind(this);
     this._boundHandleProcessorDidBuildTokenTree =
-      this._handleProcessorDidBuildTokenTree.bind(this);
+      this._handleProcessorDidGenerateTokenSets.bind(this);
   }
   connectedCallback() {
     super.connectedCallback();
@@ -614,15 +605,15 @@ export class TriploApp extends LitElement {
       this._boundHandleProcessorDidFinishProcessing, // use this instead of this._handleProcessorDidFinishProcessing()
     );
     window.addEventListener(
-      EVENT_PROCESSOR_DID_BUILD_TOKEN_TREE,
+      EVENT_PROCESSOR_DID_GENERATE_TOKEN_SETS,
       this._boundHandleProcessorDidBuildTokenTree,
     );
   }
   disconnectedCallback() {
     window.removeEventListener(
-      EVENT_PROCESSOR_DID_BUILD_TOKEN_TREE,
+      EVENT_PROCESSOR_DID_GENERATE_TOKEN_SETS,
       this._boundHandleProcessorDidBuildTokenTree ||
-        this._handleProcessorDidBuildTokenTree,
+        this._handleProcessorDidGenerateTokenSets,
     );
     window.removeEventListener(
       EVENT_INPUT_DID_GET_DATA,
@@ -663,15 +654,7 @@ export class TriploApp extends LitElement {
       <div class="main">
         <div class="main-toolbar">
           <button @click="${this._handleRequestEnrichment}">Enrich rows</button>
-          <div class="tree-toolbar">
-            Tree: <button @click="${this._handleExportTree}">Get link</button
-            ><span id="tree-download-file"></span
-            ><input
-              id="tree-upload-file"
-              type="file"
-              @change="${this._handleImportTree}"
-            />
-          </div>
+
           <div class="training-sets-toolbar">
             <span>Training sets:</span>
             <button @click="${this._handleExportTrainingSet}">Get link</button
@@ -710,56 +693,17 @@ export class TriploApp extends LitElement {
     );
     window.dispatchEvent(new CustomEvent(EVENT_APP_DID_REQUEST_ENRICHMENT));
   }
-  _handleProcessorDidBuildTokenTree() {
+  _handleProcessorDidGenerateTokenSets() {
     console.info(
-      `TriploApp._handleProcessorDidBuildTokenTree: Will handle '${EVENT_PROCESSOR_DID_BUILD_TOKEN_TREE}'`,
+      `TriploApp._handleProcessorDidGenerateTokenSets: Will handle '${EVENT_PROCESSOR_DID_GENERATE_TOKEN_SETS}'`,
     );
-    console.log(tokenTree);
-  }
-  _handleExportTree() {
-    console.log("-> TriploApp._handleExportTree: Exporting...");
-    const blob = new Blob([JSON.stringify(tokenTree, null, 2)], {
-      type: "application/json",
-    });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-
-    a.href = url;
-    // a.download = (this.selectedGroup || "[unselected]").concat(
-    //   " token_tree.json",
-    // );
-    a.download = "token_tree ".concat(groups[0] || "[unselected]", ".json");
-    a.textContent = "Download";
-    a.style.display = "block";
-
-    const downloadElementParent = this.renderRoot.querySelector(
-      "#tree-download-file",
-    );
-    if (downloadElementParent) {
-      downloadElementParent.appendChild(a);
-      setTimeout(() => {
-        URL.revokeObjectURL(url);
-        a.remove();
-      }, 20000);
-    }
+    // console.log(tokenTree);
   }
   _handleExportTrainingSet() {
     console.log("-> TriploApp._handleExportTrainingSets: Exporting...");
-    const blob = new Blob(
-      [
-        JSON.stringify(
-          {
-            trainingSetDetails: selectedTrainingSet,
-            collectedPaths,
-          },
-          null,
-          2,
-        ),
-      ],
-      {
-        type: "application/json",
-      },
-    );
+    const blob = new Blob([JSON.stringify(tokenSets, null, 2)], {
+      type: "application/json",
+    });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
 
@@ -782,30 +726,6 @@ export class TriploApp extends LitElement {
       }, 20000);
     }
   }
-  _handleImportTree(event) {
-    console.log("-> TriploApp._handleImportTree: Importing...");
-    const file = event.target.files[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      try {
-        tokenTree = JSON.parse(e.target.result);
-        console.log("--> TriploApp._handleImportTree: tokenTree loaded");
-        window.dispatchEvent(
-          new CustomEvent(EVENT_PROCESSOR_DID_BUILD_TOKEN_TREE),
-        );
-        // alert("Alias info imported successfully.");
-      } catch (err) {
-        alert("Failed to import tokenTree info.");
-      }
-      const fileUploadElement =
-        this.renderRoot.querySelector("#tree-upload-file");
-      if (fileUploadElement) {
-        fileUploadElement.value = "";
-      }
-    };
-    reader.readAsText(file);
-  }
   _handleImportTrainingSet(event) {
     console.log("-> TriploApp._handleImportTrainingSets: Importing...");
     const file = event.target.files[0];
@@ -818,7 +738,7 @@ export class TriploApp extends LitElement {
           "--> TriploApp._handleImportTrainingSets: collectedPaths loaded",
         );
         window.dispatchEvent(
-          new CustomEvent(EVENT_PROCESSOR_DID_COLLECT_PATHS),
+          new CustomEvent(EVENT_PROCESSOR_DID_GENERATE_TOKEN_SETS),
         );
         // alert("Alias info imported successfully.");
       } catch (err) {
@@ -845,12 +765,7 @@ let wordToRows = {}; // optimized word-to-row lookup
 let groups = [];
 let aliasCounter = 0;
 let aliasInfo = {};
-let tokenTree = {
-  // root fo the token tree
-  children: {},
-  rows: [],
-};
-let collectedPaths = [];
+let tokenSets = {};
 
 // === Pipeline stages ===
 const pipeline = [
@@ -1005,122 +920,71 @@ function enrichProcessedTokens() {
     ctx.enriched_tokens = enriched;
   });
   console.log("Processed rows enriched.");
+  console.log(processedRows);
   window.dispatchEvent(new CustomEvent(EVENT_PROCESSOR_DID_ENRICH));
 }
 
-function buildTokenTree() {
-  console.info("-> Will build token tree");
-  tokenTree = { children: {}, rows: [] };
+function getTokenSubsets(tokens) {
+  const result = [];
+  const n = tokens.length;
 
-  const innerWordDic = wordRows.reduce((d, row) => {
-    d[row.word] = row;
-    return d;
-  }, {});
+  for (let i = 1; i < 1 << n; i++) {
+    const subset = [];
+    for (let j = 0; j < n; j++) {
+      if (i & (1 << j)) {
+        subset.push(tokens[j]);
+      }
+    }
+    result.push(subset);
+  }
+
+  return result;
+}
+
+function generateTokenSets() {
+  console.info("-> generateTokenSets: Will generate token sets...");
+  tokenSets = {};
 
   processedRows.forEach((ctx) => {
-    const tokens = ctx.enriched_tokens.filter(
-      (t) => t.type === "word_token" || t.type === "alias_token",
-    );
-    const sorted = [...tokens].sort((a, b) => (b.count || 0) - (a.count || 0));
+    const enrichedTokens = [
+      ...ctx.enriched_tokens.filter(
+        (t) => t.type === "word_token" || t.type === "alias_token",
+      ),
+    ];
 
-    let currentNode = tokenTree;
-    for (const token of sorted) {
-      const key = token.aliasId || token.word;
-      let shouldAdd = false;
-      switch (token.type) {
-        case "word_token":
-          let wordRow = innerWordDic[key];
-          shouldAdd = wordRow.enabled;
-          break;
-        case "alias_token":
-          shouldAdd = token.enabled;
-          break;
+    const fullKey = enrichedTokens
+      .map((t) => t.aliasId || t.word)
+      .sort()
+      .join("|");
+
+    const subsets = getTokenSubsets(enrichedTokens);
+    subsets.forEach((subset) => {
+      const key = subset
+        .map((t) => t.aliasId || t.word)
+        .sort()
+        .join("|");
+      if (!tokenSets[key]) {
+        tokenSets[key] = {
+          tokens: subset,
+          query: "",
+          rows: [],
+          isLeaf: false,
+          count: 0,
+        };
       }
-      if (shouldAdd) {
-        if (!currentNode.children[key]) {
-          currentNode.children[key] = { token, children: {}, rows: [] };
-        }
-        currentNode = currentNode.children[key];
-        currentNode.rows.push(ctx);
-      }
+      tokenSets[key].rows.push(ctx);
+      tokenSets[key].count++;
+    });
+    if (tokenSets[fullKey]) {
+      tokenSets[fullKey].isLeaf = true;
     }
   });
 
-  console.log("Token tree built.");
-  window.dispatchEvent(new CustomEvent(EVENT_PROCESSOR_DID_BUILD_TOKEN_TREE));
-}
-
-function collectPathsFromTreeIterative(root = tokenTree) {
-  const results = [];
-  const queue = [];
-  const seen = new Set();
-
-  // Start with root's direct children
-  for (const key in root.children) {
-    const child = root.children[key];
-    queue.push({
-      node: child,
-      path: [child.token],
-      depth: 1,
-    });
-  }
-
-  while (queue.length > 0) {
-    const id = queue.length - 1;
-    const { node, path, depth } = queue.shift();
-
-    results.push({
-      id: results.length,
-      query: "",
-      path,
-      rows: node.rows,
-      isLeaf: Object.keys(node.children).length === 0,
-      count: node.rows.length,
-      depth,
-    });
-
-    for (const key in node.children) {
-      const child = node.children[key];
-      queue.push({
-        node: child,
-        path: [...path, child.token],
-        depth: depth + 1,
-      });
-    }
-  }
-
-  // return results;
-  results.sort((a, b) => b.count - a.count);
-  collectedPaths = results;
-  console.log(collectedPaths);
-  window.dispatchEvent(new CustomEvent(EVENT_PROCESSOR_DID_COLLECT_PATHS));
-}
-
-function traverseTreeForTriplets(node = tokenTree, path = [], triplets = []) {
-  const keys = Object.keys(node.children);
-  if (keys.length === 0 && node.rows.length > 0) {
-    const positives = node.rows.map((r) => r.row);
-    const query = path.map((t) => t.alias_id || t.word).join(" ");
-
-    let easyNegs = [],
-      hardNegs = [],
-      extremeNegs = [];
-    // Easy negatives = other leaves
-    for (const t of triplets) {
-      easyNegs.push(...t.positives);
-    }
-
-    // Hard = same parent but different leaf (TODO: expand logic later)
-    // Extreme = different subtree (already included in easyNegs for now)
-
-    triplets.push({ query, positives, easyNegs, hardNegs, extremeNegs });
-  } else {
-    for (const key of keys) {
-      const child = node.children[key];
-      traverseTreeForTriplets(child, [...path, child.token], triplets);
-    }
-  }
-  return triplets;
+  console.log("Token subsets generated and leaf sets identified.");
+  console.log(tokenSets);
+  window.dispatchEvent(
+    new CustomEvent(EVENT_PROCESSOR_DID_GENERATE_TOKEN_SETS),
+  );
 }
 
 // === Event handlers ===
@@ -1244,12 +1108,5 @@ window.addEventListener(EVENT_APP_DID_REQUEST_ENRICHMENT, () => {
 
 window.addEventListener(EVENT_PROCESSOR_DID_ENRICH, () => {
   console.info(`-> Processing event: '${EVENT_PROCESSOR_DID_ENRICH}'`);
-  buildTokenTree();
-});
-
-window.addEventListener(EVENT_PROCESSOR_DID_BUILD_TOKEN_TREE, () => {
-  console.info(
-    `-> Processing event: '${EVENT_PROCESSOR_DID_BUILD_TOKEN_TREE}'`,
-  );
-  collectPathsFromTreeIterative();
+  generateTokenSets();
 });

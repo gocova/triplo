@@ -486,9 +486,9 @@ export class TrainingSets extends LitElement {
         : token.type === "word_token"
           ? html`<span class="token">${token.word}</span>`
           : emptyHtml;
-    const trainingSetsDetails = html`${Object.keys(this._tokenSets).map(
-      (key) => {
-        const p = this._tokenSets[key];
+    const trainingSetsDetails = html`${Object.entries(this._tokenSets).map(
+      ([key, p]) => {
+        // const p = this._tokenSets[key];
         return html`<tr
           @click="${() => this._handleTrainingSetSelection(key)}"
           class="${key === this._selectedTrainingSet ? "selected" : ""}"

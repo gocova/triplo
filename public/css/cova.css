@@ -175,7 +175,10 @@ word-table {
         overflow-y: scroll;
     }
 }
-
+.training-sets-toolbar {
+    display: flex;
+    flex-flow: row nowrap;
+}
 .training-sets-container {
     display: flex;
     flex-flow: row nowrap;

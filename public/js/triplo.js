@@ -501,6 +501,7 @@ export class TrainingSets extends LitElement {
               class="training-set-query"
               data-id="${key}"
               @change="${this._handleQueryChange}"
+              @focus="${() => this._handleTrainingSetSelection(key)}"
             />
           </td>
           <!-- <td class="${p.isLeaf ? "is-leaf" : ""}"> -->

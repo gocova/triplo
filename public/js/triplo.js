@@ -409,7 +409,9 @@ export class WordTable extends LitElement {
 customElements.define("word-table", WordTable);
 
 export class TrainingSets extends LitElement {
-  static properties = {};
+  static properties = {
+    _selectedTrainingSet: { type: Number },
+  };
 
   constructor() {
     super();
@@ -444,14 +446,6 @@ export class TrainingSets extends LitElement {
   }
 
   render() {
-    const emptyHtml = html``;
-    // const processToken =(token) => {
-    //   swith(token.type){
-    //     default:
-    // return emptyHtml;
-
-    //   }
-    // };
     const getTokenElement = (token) =>
       token.type === "alias_token"
         ? html`<span class="token"
@@ -541,7 +535,7 @@ export class TrainingSets extends LitElement {
   }
   _handleTrainingSetSelection(trainingSetId) {
     this._selectedTrainingSet = trainingSetId;
-    this.requestUpdate();
+    // this.requestUpdate();
   }
 }
 

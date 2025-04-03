@@ -248,6 +248,9 @@ word-table {
                         }
                     }
                 }
+                td.is-leaf {
+                    border: 1px solid slateblue;
+                }
 
             }
         }
@@ -282,4 +285,5 @@ word-table {
         }
     }
 }
+
 

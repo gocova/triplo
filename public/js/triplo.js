@@ -465,9 +465,23 @@ export class TrainingSets extends LitElement {
         >
           <td>${p.id}</td>
           <td>
-            <input type="text" .value="${p.query}" class="training-set-query" />
+            <input
+              type="checkbox"
+              .checked="${true}"
+              data-id="${p.id}"
+              @change="${() => {}}"
+            />
           </td>
           <td>
+            <input
+              type="text"
+              .value="${p.query}"
+              class="training-set-query"
+              data-id="${p.id}"
+              @change="${this._handleQueryChange}"
+            />
+          </td>
+          <td class="${p.isLeaf ? "is-leaf" : ""}">
             <div class="path-view">
               ${p.path.map((token) => getTokenElement(token))}
             </div>
@@ -512,6 +526,7 @@ export class TrainingSets extends LitElement {
           <thead>
             <tr>
               <th class="training-sets-id-column">id</th>
+              <th class="training-sets-enabled-column">Enabled</th>
               <th class="training-sets-name-column">Query</th>
               <th class="training-sets-path-column">Path</th>
               <th class="training-sets-size-column">Size</th>
@@ -537,6 +552,19 @@ export class TrainingSets extends LitElement {
   _handleTrainingSetSelection(trainingSetId) {
     this._selectedTrainingSet = trainingSetId;
     // this.requestUpdate();
+  }
+  _handleQueryChange(e) {
+    console.log("-> TrainingSets._handleQueryChange: Updating...");
+    if (e.target) {
+      if (e.target.dataset?.id) {
+        const rowId = parseInt(e.target.dataset.id);
+        const cp = collectedPaths.find((r) => r.id === rowId);
+        if (cp) {
+          cp.query = e.target.value || "";
+          this.requestUpdate();
+        }
+      }
+    }
   }
 }
 
@@ -646,12 +674,12 @@ export class TriploApp extends LitElement {
           </div>
           <div class="training-sets-toolbar">
             <span>Training sets:</span>
-            <button @click="${this._handleExportTrainingSets}">Get link</button
+            <button @click="${this._handleExportTrainingSet}">Get link</button
             ><span id="training-sets-download-file"></span>
             <input
               id="training-sets-upload-file"
               type="file"
-              @change="${this._handleImportTrainingSets}"
+              @change="${this._handleImportTrainingSet}"
             />
           </div>
         </div>
@@ -715,11 +743,23 @@ export class TriploApp extends LitElement {
       }, 20000);
     }
   }
-  _handleExportTrainingSets() {
+  _handleExportTrainingSet() {
     console.log("-> TriploApp._handleExportTrainingSets: Exporting...");
-    const blob = new Blob([JSON.stringify(collectedPaths, null, 2)], {
-      type: "application/json",
-    });
+    const blob = new Blob(
+      [
+        JSON.stringify(
+          {
+            trainingSetDetails: selectedTrainingSet,
+            collectedPaths,
+          },
+          null,
+          2,
+        ),
+      ],
+      {
+        type: "application/json",
+      },
+    );
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
 
@@ -760,6 +800,33 @@ export class TriploApp extends LitElement {
       }
       const fileUploadElement =
         this.renderRoot.querySelector("#tree-upload-file");
+      if (fileUploadElement) {
+        fileUploadElement.value = "";
+      }
+    };
+    reader.readAsText(file);
+  }
+  _handleImportTrainingSet(event) {
+    console.log("-> TriploApp._handleImportTrainingSets: Importing...");
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        collectedPaths = JSON.parse(e.target.result);
+        console.log(
+          "--> TriploApp._handleImportTrainingSets: collectedPaths loaded",
+        );
+        window.dispatchEvent(
+          new CustomEvent(EVENT_PROCESSOR_DID_COLLECT_PATHS),
+        );
+        // alert("Alias info imported successfully.");
+      } catch (err) {
+        alert("Failed to import collectedPaths info.");
+      }
+      const fileUploadElement = this.renderRoot.querySelector(
+        "#training-sets-upload-file",
+      );
       if (fileUploadElement) {
         fileUploadElement.value = "";
       }
@@ -986,6 +1053,7 @@ function buildTokenTree() {
 function collectPathsFromTreeIterative(root = tokenTree) {
   const results = [];
   const queue = [];
+  const seen = new Set();
 
   // Start with root's direct children
   for (const key in root.children) {
@@ -993,19 +1061,22 @@ function collectPathsFromTreeIterative(root = tokenTree) {
     queue.push({
       node: child,
       path: [child.token],
+      depth: 1,
     });
   }
 
   while (queue.length > 0) {
     const id = queue.length - 1;
-    const { node, path } = queue.shift();
+    const { node, path, depth } = queue.shift();
 
     results.push({
       id: results.length,
       query: "",
       path,
       rows: node.rows,
+      isLeaf: Object.keys(node.children).length === 0,
       count: node.rows.length,
+      depth,
     });
 
     for (const key in node.children) {
@@ -1013,6 +1084,7 @@ function collectPathsFromTreeIterative(root = tokenTree) {
       queue.push({
         node: child,
         path: [...path, child.token],
+        depth: depth + 1,
       });
     }
   }
@@ -1020,6 +1092,7 @@ function collectPathsFromTreeIterative(root = tokenTree) {
   // return results;
   results.sort((a, b) => b.count - a.count);
   collectedPaths = results;
+  console.log(collectedPaths);
   window.dispatchEvent(new CustomEvent(EVENT_PROCESSOR_DID_COLLECT_PATHS));
 }
 

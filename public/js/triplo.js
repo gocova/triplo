@@ -156,6 +156,16 @@ export class WordTable extends LitElement {
           </td>
           <td>${row.id}</td>
           <td>${row.word}</td>
+          <td>
+            <input
+              type="checkbox"
+              class="enabledCheckbox"
+              data-id="${row.id}"
+              .checked="${row.isPrimary}"
+              .disabled="${row.aliasId !== null}"
+              @change="${this._handleSetPrimaryWord}"
+            />
+          </td>
           <td>${row.count}</td>
           <td>
             <input
@@ -208,6 +218,7 @@ export class WordTable extends LitElement {
                 </th>
                 <th @click="${() => this._handleSetSort("id")}">ID</th>
                 <th @click="${() => this._handleSetSort("word")}"">Word</th>
+                <th @click="${() => this._handleSetSort("isPrimary")}">Primary</th>
                 <th @click="${() => this._handleSetSort("count")}"">Count</th>
                 <th>Enabled</th>
                 <th >
@@ -275,6 +286,18 @@ export class WordTable extends LitElement {
       }
     }
   }
+  _handleSetPrimaryWord(e) {
+    if (e.target?.dataset?.id) {
+      const rowId = parseInt(e.target.dataset.id);
+      const row = this.wordRows.find((r) => r.id === rowId);
+      if (row) {
+        // console.log(row);
+        row.isPrimary = !row.isPrimary;
+
+        this.requestUpdate();
+      }
+    }
+  }
   _handleAddAlias() {
     const selected = this.wordRows.filter((r) => r.selected /* && !r.aliasId*/);
 
@@ -288,12 +311,14 @@ export class WordTable extends LitElement {
     const words = selected.map((r) => r.word);
     let count = 0;
     const enabled = selected[0].enabled;
+    const isPrimary = selected[0].isPrimary;
 
     selected.forEach((row) => {
       if (!row.aliasId) {
         row.aliasId = newAliasId;
         count += row.count;
         row.enabled = enabled;
+        row.isPrimary = isPrimary;
       }
       row.selected = false;
     });
@@ -303,6 +328,7 @@ export class WordTable extends LitElement {
       count: enabled ? count : 0,
       words,
       enabled,
+      isPrimary,
     };
 
     this._matched.clear();
@@ -378,16 +404,18 @@ export class WordTable extends LitElement {
             row.aliasId = null;
             // row.alias = "";
             row.enabled = true;
+            row.isPrimary = false;
           });
           // Reflect new data
           Object.entries(aliasInfo).forEach(([aliasId, info]) => {
-            const { enabled } = info;
+            const { enabled, isPrimary } = info;
             info.words.forEach((word) => {
               const row = wordRows.find((r) => r.word === word);
               if (row) {
                 row.aliasId = aliasId;
                 // row.alias = aliasId;
                 row.enabled = enabled;
+                row.isPrimary = isPrimary;
               }
             });
           });
@@ -1071,6 +1099,7 @@ window.addEventListener(EVENT_INPUT_DID_GET_DATA, async (e) => {
     id: index,
     word,
     count,
+    isPrimary: false,
     enabled: true,
     // alias: "",
     aliasId: null,

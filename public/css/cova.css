@@ -255,8 +255,6 @@ word-table {
 
     .related-text {
         width: 60%;
-        margin-top: 0;
-        margin-bottom: 0.5rem;
         border-left: 1rem solid transparent;
         overflow-y: scroll;
 
@@ -264,14 +262,16 @@ word-table {
             background-color: antiquewhite;
             height: calc(100vh - var(--cova-group-setup-height) - 36px - 18px - 8px - 1rem);
         } */
-        table thead th {
-            position: sticky;
-            top: 0;
-            border-bottom: 2px solid #ddd;
-            text-align: left;
-            background-color: #d0d0d0;
-            color: white
-
+        table {
+            width: 100%;
+            thead th {
+                position: sticky;
+                top: 0;
+                border-bottom: 2px solid #ddd;
+                text-align: left;
+                background-color: #d0d0d0;
+                color: white
+            }
         }
 
         .attribute-token {

@@ -195,7 +195,7 @@ export class WordTable extends LitElement {
     return html`<div class="word-table-container">
         <div class="word-table-toolbar">
             <span>${this.selectedGroup}</span>
-            <button @click="${this._handleExportRequest}">Export</button>
+            <button @click="${this._handleExportAlias}">Export</button>
             <span id="alias-download-file"></span>
             <input id="alias-upload-file" type="file" @change="${this._handleImportAlias}"/>
         </div>
@@ -333,7 +333,7 @@ export class WordTable extends LitElement {
     this._matched.clear();
     this.requestUpdate();
   }
-  _handleExportRequest() {
+  _handleExportAlias() {
     console.log("-> WordTable._handleExportRequest: Exporting...");
     const blob = new Blob([JSON.stringify(aliasInfo, null, 2)], {
       type: "application/json",
@@ -341,8 +341,12 @@ export class WordTable extends LitElement {
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = (this.selectedGroup || "[unselected]").concat(
-      " aliasInfo.json",
+    // a.download = (this.selectedGroup || "[unselected]").concat(
+    //   " alias_info.json",
+    // );
+    a.download = "alias_info ".concat(
+      this.selectedGroup || "[unselected]",
+      ".json",
     );
     a.textContent = "Download";
     a.style.display = "block";
@@ -355,11 +359,8 @@ export class WordTable extends LitElement {
       setTimeout(() => {
         URL.revokeObjectURL(url);
         a.remove();
-      }, 60000);
+      }, 20000);
     }
-    // document.body.appendChild(a);
-    // a.click();
-    // document.body.removeChild(a);
   }
   _handleImportAlias(event) {
     console.info(`-> WordTable._handleImportAlias: Importing...`);
@@ -635,8 +636,23 @@ export class TriploApp extends LitElement {
         <div class="main-toolbar">
           <button @click="${this._handleRequestEnrichment}">Enrich rows</button>
           <div class="tree-toolbar">
-            Tree: <button>Get link</button><span id="tree-download-file"></span
-            ><input type="file" />
+            Tree: <button @click="${this._handleExportTree}">Get link</button
+            ><span id="tree-download-file"></span
+            ><input
+              id="tree-upload-file"
+              type="file"
+              @change="${this._handleImportTree}"
+            />
+          </div>
+          <div class="training-sets-toolbar">
+            <span>Training sets:</span>
+            <button @click="${this._handleExportTrainingSets}">Get link</button
+            ><span id="training-sets-download-file"></span>
+            <input
+              id="training-sets-upload-file"
+              type="file"
+              @change="${this._handleImportTrainingSets}"
+            />
           </div>
         </div>
         <training-sets></training-sets>
@@ -671,6 +687,84 @@ export class TriploApp extends LitElement {
       `TriploApp._handleProcessorDidBuildTokenTree: Will handle '${EVENT_PROCESSOR_DID_BUILD_TOKEN_TREE}'`,
     );
     console.log(tokenTree);
+  }
+  _handleExportTree() {
+    console.log("-> TriploApp._handleExportTree: Exporting...");
+    const blob = new Blob([JSON.stringify(tokenTree, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+
+    a.href = url;
+    // a.download = (this.selectedGroup || "[unselected]").concat(
+    //   " token_tree.json",
+    // );
+    a.download = "token_tree ".concat(groups[0] || "[unselected]", ".json");
+    a.textContent = "Download";
+    a.style.display = "block";
+
+    const downloadElementParent = this.renderRoot.querySelector(
+      "#tree-download-file",
+    );
+    if (downloadElementParent) {
+      downloadElementParent.appendChild(a);
+      setTimeout(() => {
+        URL.revokeObjectURL(url);
+        a.remove();
+      }, 20000);
+    }
+  }
+  _handleExportTrainingSets() {
+    console.log("-> TriploApp._handleExportTrainingSets: Exporting...");
+    const blob = new Blob([JSON.stringify(collectedPaths, null, 2)], {
+      type: "application/json",
+    });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+
+    a.href = url;
+    // a.download = (this.selectedGroup || "[unselected]").concat(
+    //   " token_tree.json",
+    // );
+    a.download = "training_sets ".concat(groups[0] || "[unselected]", ".json");
+    a.textContent = "Download";
+    a.style.display = "block";
+
+    const downloadElementParent = this.renderRoot.querySelector(
+      "#training-sets-download-file",
+    );
+    if (downloadElementParent) {
+      downloadElementParent.appendChild(a);
+      setTimeout(() => {
+        URL.revokeObjectURL(url);
+        a.remove();
+      }, 20000);
+    }
+  }
+  _handleImportTree(event) {
+    console.log("-> TriploApp._handleImportTree: Importing...");
+    const file = event.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        tokenTree = JSON.parse(e.target.result);
+        console.log("--> TriploApp._handleImportTree: tokenTree loaded");
+        window.dispatchEvent(
+          new CustomEvent(EVENT_PROCESSOR_DID_BUILD_TOKEN_TREE),
+        );
+        // alert("Alias info imported successfully.");
+      } catch (err) {
+        alert("Failed to import tokenTree info.");
+      }
+      const fileUploadElement =
+        this.renderRoot.querySelector("#tree-upload-file");
+      if (fileUploadElement) {
+        fileUploadElement.value = "";
+      }
+    };
+    reader.readAsText(file);
   }
 }
 customElements.define("triplo-app", TriploApp);

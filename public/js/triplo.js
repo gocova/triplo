@@ -497,6 +497,7 @@ export class TrainingSets extends LitElement {
             <input
               type="text"
               .value="${p.query}"
+              spellcheck="false"
               class="training-set-query"
               data-id="${key}"
               @change="${this._handleQueryChange}"
@@ -761,9 +762,9 @@ export class TriploApp extends LitElement {
     const reader = new FileReader();
     reader.onload = (e) => {
       try {
-        collectedPaths = JSON.parse(e.target.result);
+        tokenSets = JSON.parse(e.target.result);
         console.log(
-          "--> TriploApp._handleImportTrainingSets: collectedPaths loaded",
+          "--> TriploApp._handleImportTrainingSets: tokenSets loaded",
         );
         window.dispatchEvent(
           new CustomEvent(EVENT_PROCESSOR_DID_GENERATE_TOKEN_SETS),
@@ -952,18 +953,37 @@ function enrichProcessedTokens() {
   window.dispatchEvent(new CustomEvent(EVENT_PROCESSOR_DID_ENRICH));
 }
 
+// function getTokenSubsets(tokens) {
+//   const result = [];
+//   const n = tokens.length;
+
+//   for (let i = 1; i < 1 << n; i++) {
+//     const subset = [];
+//     for (let j = 0; j < n; j++) {
+//       if (i & (1 << j)) {
+//         subset.push(tokens[j]);
+//       }
+//     }
+//     result.push(subset);
+//   }
+
+//   return result;
+// }
 function getTokenSubsets(tokens) {
   const result = [];
   const n = tokens.length;
 
   for (let i = 1; i < 1 << n; i++) {
+    let withPrimary = false;
     const subset = [];
     for (let j = 0; j < n; j++) {
       if (i & (1 << j)) {
-        subset.push(tokens[j]);
+        const currToken = tokens[j];
+        subset.push(currToken);
+        if (currToken.isPrimary) withPrimary = true;
       }
     }
-    result.push(subset);
+    if (withPrimary) result.push(subset);
   }
 
   return result;

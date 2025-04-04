@@ -954,6 +954,54 @@ function enrichProcessedTokens() {
   window.dispatchEvent(new CustomEvent(EVENT_PROCESSOR_DID_ENRICH));
 }
 
+function deduplicateTokenSets() {
+  console.info("-> deduplicateTokenSets: Will deduplicate token sets...");
+
+  const uniqueSets = {};
+  const rowKeyToBestSet = new Map();
+  const rowKeyToRedundantKeys = new Map();
+
+  Object.entries(tokenSets).forEach(([key, set]) => {
+    const rowIds = set.rows
+      .map((r) => r.row.id || JSON.stringify(r.row))
+      .sort()
+      .join("|");
+
+    // If first time seeing this row set, mark it
+    if (!rowKeyToBestSet.has(rowIds)) {
+      rowKeyToBestSet.set(rowIds, { key, set });
+      rowKeyToRedundantKeys.set(rowIds, []);
+    } else {
+      const currentBest = rowKeyToBestSet.get(rowIds);
+      const currentRedundant = rowKeyToRedundantKeys.get(rowIds);
+
+      // Determine if current is better
+      const isCurrentBetter =
+        set.tokens.length > currentBest.set.tokens.length ||
+        (set.tokens.length === currentBest.set.tokens.length && set.isLeaf);
+
+      if (isCurrentBetter) {
+        // Replace the best, add old key to redundant
+        currentRedundant.push(currentBest.set.tokens);
+        rowKeyToBestSet.set(rowIds, { key, set });
+      } else {
+        // Add this one to redundant list
+        currentRedundant.push(set.tokens);
+      }
+    }
+  });
+
+  // Build final tokenSets
+  rowKeyToBestSet.forEach(({ key, set }, rowIds) => {
+    set.redundantKeys = rowKeyToRedundantKeys.get(rowIds);
+    uniqueSets[key] = set;
+  });
+
+  tokenSets = uniqueSets;
+  console.log("Deduplicated token sets and recorded redundant combinations.");
+  console.log(tokenSets);
+}
+
 // function getTokenSubsets(tokens) {
 //   const result = [];
 //   const n = tokens.length;
@@ -1031,6 +1079,7 @@ function generateTokenSets() {
 
   console.log("Token subsets generated and leaf sets identified.");
   console.log(tokenSets);
+  deduplicateTokenSets();
   window.dispatchEvent(
     new CustomEvent(EVENT_PROCESSOR_DID_GENERATE_TOKEN_SETS),
   );

@@ -243,7 +243,7 @@ export class WordTable extends LitElement {
       return row;
     });
     if (checked) {
-      wordRows.forEach((wordRow) => this._matched.add(wordRow.word));
+      this.wordRows.forEach((wordRow) => this._matched.add(wordRow.word));
     } else {
       this._matched.clear();
     }
@@ -305,31 +305,36 @@ export class WordTable extends LitElement {
     // const newAliasId = `${this._selectedGroup}_${aliasCounter++}`;
     const newAliasId = (this.selectedGroup || "[unselected]").concat(
       "_",
-      aliasCounter++,
+      aliasCounter,
     );
 
-    const words = selected.map((r) => r.word);
+    // const words = selected.map((r) => r.word);
     let count = 0;
     const enabled = selected[0].enabled;
     const isPrimary = selected[0].isPrimary;
 
+    const words = [];
     selected.forEach((row) => {
       if (!row.aliasId) {
         row.aliasId = newAliasId;
         count += row.count;
         row.enabled = enabled;
         row.isPrimary = isPrimary;
+        words.push(row.word);
       }
       row.selected = false;
     });
-    aliasInfo[newAliasId] = {
-      type: "alias_token",
-      aliasId: newAliasId,
-      count: enabled ? count : 0,
-      words,
-      enabled,
-      isPrimary,
-    };
+    if (words.length > 0) {
+      aliasInfo[newAliasId] = {
+        type: "alias_token",
+        aliasId: newAliasId,
+        count: enabled ? count : 0,
+        words,
+        enabled,
+        isPrimary,
+        rowId: aliasCounter++,
+      };
+    }
 
     this._matched.clear();
     this.requestUpdate();
@@ -396,11 +401,12 @@ export class WordTable extends LitElement {
     reader.onload = (e) => {
       try {
         aliasInfo = JSON.parse(e.target.result);
+        aliasCounter = 0;
 
         // Update wordRows if already loaded
-        if (wordRows.length > 0) {
+        if (this.wordRows.length > 0) {
           // Reset current wordRows
-          wordRows.forEach((row) => {
+          this.wordRows.forEach((row) => {
             row.aliasId = null;
             // row.alias = "";
             row.enabled = true;
@@ -408,9 +414,11 @@ export class WordTable extends LitElement {
           });
           // Reflect new data
           Object.entries(aliasInfo).forEach(([aliasId, info]) => {
-            const { enabled, isPrimary } = info;
+            const { enabled, isPrimary, rowId } = info;
+            info.rowId = Math.max(aliasCounter, rowId || 0);
+            aliasCounter = info.rowId + 1;
             info.words.forEach((word) => {
-              const row = wordRows.find((r) => r.word === word);
+              const row = this.wordRows.find((r) => r.word === word);
               if (row) {
                 row.aliasId = aliasId;
                 // row.alias = aliasId;

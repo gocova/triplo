@@ -6,6 +6,7 @@ body {
 
 :root {
     --cova-group-setup-height: 40vh;
+    --cova-group-setup-max-height: 275px;
     --cova-training-sets-height: 50vh;
     --cova-panel-heading-size: 20px;
     --cova-panel-heading-weight: 700;
@@ -37,6 +38,7 @@ body {
         display: flex;
         flex-flow: row nowrap;
         height: var(--cova-group-setup-height);
+        max-height: var(--cova-group-setup-max-height);
 
         .dictionary-setup {
             width: 100%;
@@ -45,7 +47,7 @@ body {
 
             .group-selector {
                 width: 25%;
-                max-width: 250px;
+                max-width: 180px;
             }
         }
     }
@@ -129,7 +131,7 @@ word-table {
 }
 .word-table-container {
     /* height: calc(var(--cova-group-setup-height)); */
-    width: 35%;
+    /* width: 35%; */
 
     .word-table-toolbar {
         height: var(--cova-word-table-toolbar-height);
@@ -141,7 +143,7 @@ word-table {
     .scrollable {
         overflow-y: scroll;
         border-radius: var(--cova-panel-radius);
-        height: calc(var(--cova-group-setup-height) - var(--cova-word-table-toolbar-height));
+        height: calc(min(var(--cova-group-setup-height), var(--cova-group-setup-max-height)) - var(--cova-word-table-toolbar-height));
     
         table.word-table {
             width: 100%;
@@ -170,7 +172,7 @@ word-table {
         margin-bottom: 0.5rem;
     }
     ul {
-        height: calc(var(--cova-group-setup-height) - 18px - 0.5rem);
+        height: calc(min(var(--cova-group-setup-height), var(--cova-group-setup-max-height)) - 18px - 0.5rem);
         margin: 0;
         overflow-y: scroll;
     }
@@ -183,7 +185,7 @@ word-table {
     display: flex;
     flex-flow: row nowrap;
     /* background-color: lightslategray; */
-    height: calc(100vh - var(--cova-group-setup-height) - 36px - 1rem);
+    height: calc(100vh - min(var(--cova-group-setup-height),var(--cova-group-setup-max-height)) - 36px - 1rem);
 
     .scrollable {
         overflow-y: scroll;
